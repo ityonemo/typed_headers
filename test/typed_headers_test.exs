@@ -4,46 +4,63 @@ defmodule TypedHeadersTest do
   defmodule BasicTypes do
     use TypedHeaders
 
-    def int_identity(value :: integer) :: integer do
+    #
+    # see: https://hexdocs.pm/elixir/typespecs.html
+    #
+
+    def any_identity(value :: any) do
       value
     end
 
-    def float_identity(value :: float) :: float do
+    def int_identity(value :: integer) do
       value
     end
 
-    def number_identity(value :: number) :: number do
+    def float_identity(value :: float) do
       value
     end
 
-    def boolean_identity(value :: boolean) :: boolean do
+    def number_identity(value :: number) do
       value
     end
 
-    def atom_identity(value :: atom) :: atom do
+    def boolean_identity(value :: boolean) do
       value
     end
 
-    def pid_identity(value :: pid) :: pid do
+    def atom_identity(value :: atom) do
       value
     end
 
-    def reference_identity(value :: reference) :: reference do
+    def pid_identity(value :: pid) do
       value
     end
 
-    def tuple_identity(value :: tuple) :: tuple do
+    def reference_identity(value :: reference) do
       value
     end
 
-    def list_identity(value :: list) :: list do
+    def tuple_identity(value :: tuple) do
       value
     end
 
-    def map_identity(value :: map) :: map do
+    def list_identity(value :: list) do
       value
     end
 
+    def map_identity(value :: map) do
+      value
+    end
+
+    def struct_identity(value :: struct) do
+      value
+    end
+
+  end
+
+  test "any headers" do
+    assert 47 = BasicTypes.any_identity(47)
+    assert "47" = BasicTypes.any_identity("47")
   end
 
   test "integer headers" do
@@ -119,6 +136,15 @@ defmodule TypedHeadersTest do
     assert %{} == BasicTypes.map_identity(%{})
     assert_raise FunctionClauseError, fn ->
       BasicTypes.map_identity("not a map")
+    end
+  end
+
+  test "struct headers" do
+    alias TypedHeadersTest.EmptyStruct
+
+    assert %EmptyStruct{} == BasicTypes.struct_identity(%EmptyStruct{})
+    assert_raise FunctionClauseError, fn ->
+      BasicTypes.struct_identity(%{not: :amap})
     end
   end
 

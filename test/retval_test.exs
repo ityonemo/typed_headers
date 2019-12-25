@@ -23,6 +23,8 @@ defmodule TypedHeadersTest.RetvalTest do
     def list_guarded(value) :: list, do: value
 
     def map_guarded(value) :: map, do: value
+
+    def struct_guarded(value) :: struct, do: value
   end
 
   test "guarded integer" do
@@ -95,6 +97,15 @@ defmodule TypedHeadersTest.RetvalTest do
     assert %{} == BasicTypes.map_guarded(%{})
     assert_raise RuntimeError, fn ->
       BasicTypes.map_guarded("not_a_map")
+    end
+  end
+
+  test "guarded struct" do
+    alias TypedHeadersTest.EmptyStruct
+
+    assert %EmptyStruct{} == BasicTypes.struct_guarded(%EmptyStruct{})
+    assert_raise RuntimeError, fn ->
+      BasicTypes.struct_guarded(%{not: :amap})
     end
   end
 end
