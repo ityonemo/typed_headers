@@ -62,6 +62,7 @@ defmodule TypedHeaders.Redef do
   }
   @builtins Map.keys(@typefn)
   @full_context [context: Elixir, import: Kernel]
+  @brackets [:<<>>, :{}]
 
   defp when_statements({@t, _, [_, {no_op, _, _}]}) when no_op in @noops, do: []
   defp when_statements({@t, _, [varinfo, {type, _, _}]}) when type in @builtins do
@@ -79,8 +80,12 @@ defmodule TypedHeaders.Redef do
   defp when_statements({@t, _, [varinfo, {:pos_integer, _, _}]}) do
     [{@typefn[:integer], @full_context, [varinfo]}, {:>, @full_context, [varinfo, 0]}]
   end
-  defp when_statements({@t, _, [varinfo, literal]}) when is_integer(literal) or is_atom(literal) do
+  defp when_statements({@t, _, [varinfo, literal]}) when
+      is_integer(literal) or is_atom(literal) or (literal === []) do
     [{:===, @full_context, [varinfo, literal]}]
+  end
+  defp when_statements({@t, _, [varinfo, val = {operator, _, []}]}) when operator in @brackets do
+    [{:===, @full_context, [varinfo, val]}]
   end
   defp when_statements({@t, _, [varinfo, {:.., _, [a, b]}]}) when is_integer(a) and is_integer(b) do
     [
@@ -142,11 +147,24 @@ defmodule TypedHeaders.Redef do
     guard = {:when, [], [result, {:and, @full_context, [{@typefn[:integer], @full_context, [result]}, {:>, @full_context, [result, 0]}]}]}
     inject_check(term, fn_name, :pos_integer, guard)
   end
-  defp inject_check([do: term], fn_name, literal) when is_integer(literal) or is_atom(literal) do
-    # integer and atom literals
+  defp inject_check([do: term], fn_name, literal) when
+      is_integer(literal) or is_atom(literal) or (literal === []) do
+    # integer, atom, emptylist, or emptytuple literals
     result = quote do var!(result) end
     guard = {:when, [], [result, {:===, @full_context, [result, literal]}]}
     inject_check(term, fn_name, literal, guard)
+  end
+  defp inject_check([do: term], fn_name, {:<<>>, _, []}) do
+    # empty string literal
+    result = quote do var!(result) end
+    guard = {:when, [], [result, {:===, @full_context, [result, ""]}]}
+    inject_check(term, fn_name, "<<>>", guard)
+  end
+  defp inject_check([do: term], fn_name, {:{}, meta, []}) do
+    # empty tuple literal
+    result = quote do var!(result) end
+    guard = {:when, [], [result, {:===, @full_context, [result, {:{}, meta, []}]}]}
+    inject_check(term, fn_name, "{}", guard)
   end
   defp inject_check([do: term], fn_name, {:.., _, [a, b]}) when is_integer(a) and is_integer(b) do
     result = quote do var!(result) end

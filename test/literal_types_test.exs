@@ -80,7 +80,6 @@ defmodule TypedHeadersTest.LiteralTypesTest do
     end
   end
 
-
   def atom_literal(value :: :foo) do
     value
   end
@@ -98,6 +97,84 @@ defmodule TypedHeadersTest.LiteralTypesTest do
     assert :foo == atom_retval(:foo)
     assert_raise RuntimeError, fn ->
       atom_retval("foo")
+    end
+  end
+
+  def emptystring_literal(value :: <<>>) do
+    value
+  end
+
+  def emptystring_retval(value) :: <<>> do
+    value
+  end
+
+  test "emptystring_literal" do
+    assert "" == emptystring_literal("")
+    assert_raise FunctionClauseError, fn ->
+      emptystring_literal("foo")
+    end
+    assert_raise FunctionClauseError, fn ->
+      emptystring_literal(:foo)
+    end
+
+    assert "" == emptystring_retval("")
+    assert_raise RuntimeError, fn ->
+      emptystring_retval("foo")
+    end
+    assert_raise FunctionClauseError, fn ->
+      emptystring_literal(:foo)
+    end
+  end
+
+  def emptylist_literal(value :: []) do
+    value
+  end
+
+  def emptylist_retval(value) :: [] do
+    value
+  end
+
+  test "emptylist_literal" do
+    assert [] == emptylist_literal([])
+    assert_raise FunctionClauseError, fn ->
+      emptylist_literal([:foo])
+    end
+    assert_raise FunctionClauseError, fn ->
+      emptylist_literal(:foo)
+    end
+
+    assert [] == emptylist_retval([])
+    assert_raise RuntimeError, fn ->
+      emptylist_retval([:foo])
+    end
+    assert_raise FunctionClauseError, fn ->
+      emptylist_literal(:foo)
+    end
+  end
+
+  def emptytuple_literal(value :: {}) do
+    value
+  end
+
+  def emptytuple_retval(value) :: {} do
+    value
+  end
+
+  test "emptytuple_literal" do
+    assert {} == emptytuple_literal({})
+    assert_raise FunctionClauseError, fn ->
+      emptytuple_literal({:foo})
+    end
+    assert_raise FunctionClauseError, fn ->
+      emptytuple_literal(:foo)
+    end
+
+    assert {} == emptytuple_retval({})
+    assert_raise RuntimeError, fn ->
+      emptytuple_retval({:foo})
+    end
+    assert_raise FunctionClauseError, fn ->
+      emptytuple_literal(:foo)
     end
   end
 end
