@@ -1,4 +1,4 @@
-defmodule TypedHeadersTest.AdvancedIntegerTypesTest do
+defmodule TypedHeadersTest.IntegerTypesTest do
 
   use ExUnit.Case, async: true
 
@@ -93,45 +93,4 @@ defmodule TypedHeadersTest.AdvancedIntegerTypesTest do
       pos_integer_retval(-1)
     end
   end
-
-  def integer_literal(value :: 47) do
-    value
-  end
-
-  test "integer_literal" do
-    assert 47 == integer_literal(47)
-    assert_raise FunctionClauseError, fn ->
-      integer_literal(47.0)
-    end
-    assert_raise FunctionClauseError, fn ->
-      integer_literal(0)
-    end
-    assert_raise FunctionClauseError, fn ->
-      integer_literal(:foo)
-    end
-  end
-
-  def integer_range(value :: 42..47) do
-    value
-  end
-
-  test "integer_range" do
-    assert 47 == integer_range(47)
-    assert 42 == integer_range(42)
-    assert 43 == integer_range(43)
-
-    assert_raise FunctionClauseError, fn ->
-      integer_literal(43.0)
-    end
-    assert_raise FunctionClauseError, fn ->
-      integer_literal(41)
-    end
-    assert_raise FunctionClauseError, fn ->
-      integer_literal(48)
-    end
-    assert_raise FunctionClauseError, fn ->
-      integer_literal(:foo)
-    end
-  end
-
 end

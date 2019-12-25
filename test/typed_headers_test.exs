@@ -8,144 +8,169 @@ defmodule TypedHeadersTest do
     # see: https://hexdocs.pm/elixir/typespecs.html
     #
 
-    def any_identity(value :: any) do
+    def any_header(value :: any) do
       value
     end
 
-    def int_identity(value :: integer) do
+    def int_header(value :: integer) do
       value
     end
 
-    def float_identity(value :: float) do
+    def float_header(value :: float) do
       value
     end
 
-    def number_identity(value :: number) do
+    def number_header(value :: number) do
       value
     end
 
-    def boolean_identity(value :: boolean) do
+    def boolean_header(value :: boolean) do
       value
     end
 
-    def atom_identity(value :: atom) do
+    def atom_header(value :: atom) do
       value
     end
 
-    def pid_identity(value :: pid) do
+    def pid_header(value :: pid) do
       value
     end
 
-    def reference_identity(value :: reference) do
+    def reference_header(value :: reference) do
       value
     end
 
-    def tuple_identity(value :: tuple) do
+    def tuple_header(value :: tuple) do
       value
     end
 
-    def list_identity(value :: list) do
+    def list_header(value :: list) do
       value
     end
 
-    def map_identity(value :: map) do
+    def map_header(value :: map) do
       value
     end
 
-    def struct_identity(value :: struct) do
+    def function_header(value :: function) do
       value
     end
+
+    def port_header(value :: port) do
+      value
+    end
+
+#    def struct_header(value :: struct) do
+#      value
+#    end
 
   end
 
   test "any headers" do
-    assert 47 = BasicTypes.any_identity(47)
-    assert "47" = BasicTypes.any_identity("47")
+    assert 47 = BasicTypes.any_header(47)
+    assert "47" = BasicTypes.any_header("47")
   end
 
   test "integer headers" do
-    assert 47 == BasicTypes.int_identity(47)
+    assert 47 == BasicTypes.int_header(47)
     assert_raise FunctionClauseError, fn ->
-      BasicTypes.int_identity("not_an_integer")
+      BasicTypes.int_header("not_an_integer")
     end
   end
 
   test "float headers" do
-    assert 47.0 == BasicTypes.float_identity(47.0)
+    assert 47.0 == BasicTypes.float_header(47.0)
     assert_raise FunctionClauseError, fn ->
-      BasicTypes.float_identity(47)
+      BasicTypes.float_header(47)
     end
   end
 
   test "number headers" do
-    assert 47 == BasicTypes.number_identity(47)
-    assert 47.0 == BasicTypes.number_identity(47.0)
+    assert 47 == BasicTypes.number_header(47)
+    assert 47.0 == BasicTypes.number_header(47.0)
     assert_raise FunctionClauseError, fn ->
-      BasicTypes.number_identity("not a number")
+      BasicTypes.number_header("not a number")
     end
   end
 
   test "boolean headers" do
-    assert true == BasicTypes.boolean_identity(true)
-    assert false == BasicTypes.boolean_identity(false)
+    assert true == BasicTypes.boolean_header(true)
+    assert false == BasicTypes.boolean_header(false)
     assert_raise FunctionClauseError, fn ->
-      BasicTypes.boolean_identity("not a bool")
+      BasicTypes.boolean_header("not a bool")
     end
   end
 
   test "atom headers" do
-    assert :foo == BasicTypes.atom_identity(:foo)
+    assert :foo == BasicTypes.atom_header(:foo)
     assert_raise FunctionClauseError, fn ->
-      BasicTypes.atom_identity("not a atom")
+      BasicTypes.atom_header("not a atom")
     end
   end
 
   test "pid headers" do
-    assert self() == BasicTypes.pid_identity(self())
+    assert self() == BasicTypes.pid_header(self())
     assert_raise FunctionClauseError, fn ->
-      BasicTypes.pid_identity("not a pid")
+      BasicTypes.pid_header("not a pid")
     end
   end
 
   test "reference headers" do
     ref = make_ref()
-    assert ref == BasicTypes.reference_identity(ref)
+    assert ref == BasicTypes.reference_header(ref)
     assert_raise FunctionClauseError, fn ->
-      BasicTypes.reference_identity("not a reference")
+      BasicTypes.reference_header("not a reference")
+    end
+  end
+
+  test "function headers" do
+    assert (&IO.puts/1) == BasicTypes.function_header(&IO.puts/1)
+    assert_raise FunctionClauseError, fn ->
+      BasicTypes.function_header("not a function")
+    end
+  end
+
+  test "port headers" do
+    {:ok, port} = :gen_udp.open(0)
+    assert port == BasicTypes.port_header(port)
+    assert_raise FunctionClauseError, fn ->
+      BasicTypes.port_header("not a port")
     end
   end
 
   ######################################################3######################
   ## collections
-
   test "tuple headers" do
-    assert {:ok, "foo"} == BasicTypes.tuple_identity({:ok, "foo"})
+    assert {:ok, "foo"} == BasicTypes.tuple_header({:ok, "foo"})
     assert_raise FunctionClauseError, fn ->
-      BasicTypes.tuple_identity("not a tuple")
+      BasicTypes.tuple_header("not a tuple")
     end
   end
 
   test "list headers" do
-    assert [1, 2] == BasicTypes.list_identity([1, 2])
+    assert [1, 2] == BasicTypes.list_header([1, 2])
     assert_raise FunctionClauseError, fn ->
-      BasicTypes.list_identity("not a list")
+      BasicTypes.list_header("not a list")
     end
   end
 
   test "map headers" do
-    assert %{} == BasicTypes.map_identity(%{})
+    assert %{} == BasicTypes.map_header(%{})
     assert_raise FunctionClauseError, fn ->
-      BasicTypes.map_identity("not a map")
+      BasicTypes.map_header("not a map")
     end
   end
 
-  test "struct headers" do
-    alias TypedHeadersTest.EmptyStruct
-
-    assert %EmptyStruct{} == BasicTypes.struct_identity(%EmptyStruct{})
-    assert_raise FunctionClauseError, fn ->
-      BasicTypes.struct_identity(%{not: :amap})
-    end
-  end
+#  test "struct headers" do
+#    alias TypedHeadersTest.EmptyStruct
+#
+#    assert %EmptyStruct{} == BasicTypes.struct_header(%EmptyStruct{})
+#    assert_raise FunctionClauseError, fn ->
+#      BasicTypes.struct_header(%{not: :astruct})
+#    end
+#    assert_raise FunctionClauseError, fn ->
+#      BasicTypes.struct_header(%{__struct__: NotAModule})
+#    end
+#  end
 
 end
