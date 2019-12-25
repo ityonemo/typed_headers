@@ -94,6 +94,21 @@ defmodule TypedHeaders.Redef do
     guard = {:when, [], [result, dot_call(:erlang, :is_map_key, [:__struct__, result])]}
     inject_check(term, fn_name, :struct, guard)
   end
+  defp inject_check([do: term], fn_name, {:neg_integer, _, _}) do
+    result = quote do var!(result) end
+    guard = {:when, [], [result, {:and, @full_context, [{@typefn[:integer], @full_context, [result]}, {:<, @full_context, [result, 0]}]}]}
+    inject_check(term, fn_name, :struct, guard)
+  end
+  defp inject_check([do: term], fn_name, {:non_neg_integer, _, _}) do
+    result = quote do var!(result) end
+    guard = {:when, [], [result, {:and, @full_context, [{@typefn[:integer], @full_context, [result]}, {:>=, @full_context, [result, 0]}]}]}
+    inject_check(term, fn_name, :struct, guard)
+  end
+  defp inject_check([do: term], fn_name, {:pos_integer, _, _}) do
+    result = quote do var!(result) end
+    guard = {:when, [], [result, {:and, @full_context, [{@typefn[:integer], @full_context, [result]}, {:>, @full_context, [result, 0]}]}]}
+    inject_check(term, fn_name, :struct, guard)
+  end
 
   defp inject_check(term, fn_name, type, guard) do
     new_directive = quote do
