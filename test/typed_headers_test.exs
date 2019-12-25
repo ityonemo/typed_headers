@@ -60,9 +60,13 @@ defmodule TypedHeadersTest do
       value
     end
 
-#    def struct_header(value :: struct) do
-#      value
-#    end
+    def binary_header(value :: binary) do
+      value
+    end
+
+    def bitstring_header(value :: bitstring) do
+      value
+    end
 
   end
 
@@ -140,6 +144,7 @@ defmodule TypedHeadersTest do
 
   ######################################################3######################
   ## collections
+
   test "tuple headers" do
     assert {:ok, "foo"} == BasicTypes.tuple_header({:ok, "foo"})
     assert_raise FunctionClauseError, fn ->
@@ -158,6 +163,21 @@ defmodule TypedHeadersTest do
     assert %{} == BasicTypes.map_header(%{})
     assert_raise FunctionClauseError, fn ->
       BasicTypes.map_header("not a map")
+    end
+  end
+
+  test "binary headers" do
+    assert "foo" == BasicTypes.binary_header("foo")
+    assert_raise FunctionClauseError, fn ->
+      BasicTypes.binary_header(:not_a_binary)
+    end
+  end
+
+  test "bitstring headers" do
+    assert <<10::7>> == BasicTypes.bitstring_header(<<10::7>>)
+    assert "foo" == BasicTypes.bitstring_header("foo")
+    assert_raise FunctionClauseError, fn ->
+      BasicTypes.bitstring_header(:not_a_bitsring)
     end
   end
 

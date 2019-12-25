@@ -55,6 +55,8 @@ defmodule TypedHeaders.Redef do
     map:       :is_map,
     function:  :is_function,
     port:      :is_port,
+    binary:    :is_binary,
+    bitstring: :is_bitstring,
     # derived types
     fun:       :is_function,
   }

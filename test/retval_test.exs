@@ -27,23 +27,27 @@ defmodule TypedHeadersTest.RetvalTest do
     def function_retval(value) :: function, do: value
 
     def port_retval(value) :: port, do: value
+
+    def binary_retval(value) :: binary, do: value
+
+    def bitstring_retval(value) :: bitstring, do: value
   end
 
-  test "guarded integer" do
+  test "retval integer" do
     assert 47 == BasicTypes.int_retval(47)
     assert_raise RuntimeError, fn ->
       BasicTypes.int_retval("not_an_integer")
     end
   end
 
-  test "guarded float" do
+  test "retval float" do
     assert 47.0 == BasicTypes.float_retval(47.0)
     assert_raise RuntimeError, fn ->
       BasicTypes.float_retval("not_a_float")
     end
   end
 
-  test "guarded number" do
+  test "retval number" do
     assert 47.0 == BasicTypes.number_retval(47.0)
     assert 47 == BasicTypes.number_retval(47)
     assert_raise RuntimeError, fn ->
@@ -51,7 +55,7 @@ defmodule TypedHeadersTest.RetvalTest do
     end
   end
 
-  test "guarded boolean" do
+  test "retval boolean" do
     assert false == BasicTypes.boolean_retval(false)
     assert true == BasicTypes.boolean_retval(true)
     assert_raise RuntimeError, fn ->
@@ -59,21 +63,21 @@ defmodule TypedHeadersTest.RetvalTest do
     end
   end
 
-  test "guarded atom" do
+  test "retval atom" do
     assert :foo == BasicTypes.atom_retval(:foo)
     assert_raise RuntimeError, fn ->
       BasicTypes.atom_retval("not_a_atom")
     end
   end
 
-  test "guarded pid" do
+  test "retval pid" do
     assert self() == BasicTypes.pid_retval(self())
     assert_raise RuntimeError, fn ->
       BasicTypes.pid_retval("not_a_pid")
     end
   end
 
-  test "guarded reference" do
+  test "retval reference" do
     ref = make_ref()
     assert ref == BasicTypes.reference_retval(ref)
     assert_raise RuntimeError, fn ->
@@ -81,39 +85,54 @@ defmodule TypedHeadersTest.RetvalTest do
     end
   end
 
-  test "guarded tuple" do
+  test "retval tuple" do
     assert {1, 2} == BasicTypes.tuple_retval({1, 2})
     assert_raise RuntimeError, fn ->
       BasicTypes.tuple_retval("not_a_tuple")
     end
   end
 
-  test "guarded list" do
+  test "retval list" do
     assert [1, 2] == BasicTypes.list_retval([1, 2])
     assert_raise RuntimeError, fn ->
       BasicTypes.list_retval("not_a_list")
     end
   end
 
-  test "guarded map" do
+  test "retval map" do
     assert %{} == BasicTypes.map_retval(%{})
     assert_raise RuntimeError, fn ->
       BasicTypes.map_retval("not_a_map")
     end
   end
 
-  test "guarded functions" do
+  test "retval functions" do
     assert (&IO.puts/1) == BasicTypes.function_retval(&IO.puts/1)
     assert_raise RuntimeError, fn ->
       BasicTypes.function_retval("not a function")
     end
   end
 
-  test "guarded ports" do
+  test "retval ports" do
     {:ok, port} = :gen_udp.open(0)
     assert port == BasicTypes.port_retval(port)
     assert_raise RuntimeError, fn ->
       BasicTypes.port_retval("not a port")
+    end
+  end
+
+  test "retval binary" do
+    assert "foo" == BasicTypes.binary_retval("foo")
+    assert_raise RuntimeError, fn ->
+      BasicTypes.binary_retval(:not_a_binary)
+    end
+  end
+
+  test "retval bitstring" do
+    assert <<10::7>> == BasicTypes.bitstring_retval(<<10::7>>)
+    assert "foo" == BasicTypes.bitstring_retval("foo")
+    assert_raise RuntimeError, fn ->
+      BasicTypes.bitstring_retval(:not_a_bitstring)
     end
   end
 end
