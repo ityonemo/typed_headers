@@ -153,7 +153,6 @@ defmodule TypedHeadersTest.ListTypeTest do
       assert_raise RuntimeError, fn ->
         maybe_improper_list_retval(:foo)
       end
-      # TODO: raise on improper list.
     end
   end
 
@@ -193,7 +192,53 @@ defmodule TypedHeadersTest.ListTypeTest do
       assert_raise RuntimeError, fn ->
         maybe_improper_list_1_retval([47 | :foo])
       end
-      # TODO: raise on improper list.
+    end
+  end
+
+  def maybe_improper_list_2_header(value :: maybe_improper_list(integer, atom)) do
+    value
+  end
+
+  def maybe_improper_list_2_retval(value) :: maybe_improper_list(integer, atom) do
+    value
+  end
+
+  describe "maybe_improper_list/2 typechecking works" do
+    test "in the header" do
+      assert [] == maybe_improper_list_2_header([])
+      assert [47] == maybe_improper_list_2_header([47])
+      assert [47 | :done] == maybe_improper_list_2_header([47 | :done])
+      assert [47, 42] == maybe_improper_list_2_retval([47, 42])
+      assert_raise FunctionClauseError, fn ->
+        maybe_improper_list_2_header(:foo)
+      end
+      assert_raise FunctionClauseError, fn ->
+        maybe_improper_list_2_header([:done | 47])
+      end
+      assert_raise FunctionClauseError, fn ->
+        maybe_improper_list_2_header([47 | 42])
+      end
+      assert_raise FunctionClauseError, fn ->
+        maybe_improper_list_2_header([47, 42, :done])
+      end
+    end
+    test "in the retval" do
+      assert [] == maybe_improper_list_2_retval([])
+      assert [47] == maybe_improper_list_2_retval([47])
+      assert [47 | :done] == maybe_improper_list_2_retval([47 | :done])
+      assert [47, 42] == maybe_improper_list_2_retval([47, 42])
+      assert_raise RuntimeError, fn ->
+        maybe_improper_list_2_retval(:done)
+      end
+      assert_raise RuntimeError, fn ->
+        maybe_improper_list_2_retval([:done | 47])
+      end
+      assert_raise RuntimeError, fn ->
+        maybe_improper_list_2_retval([47 | 42])
+      end
+      assert_raise RuntimeError, fn ->
+        maybe_improper_list_2_retval([47, 42, :done])
+      end
     end
   end
 end
