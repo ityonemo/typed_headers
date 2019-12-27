@@ -167,6 +167,51 @@ defmodule TypedHeaders.Redef do
       match?([_ | _], unquote(variable)) || raise FunctionClauseError
     end]
   end
+  defp pre_statements({@t, _, [variable, {:nonempty_maybe_improper_list, _, [type]}]}) do
+    # TODO: DRY THIS UP WITH BELOW VVV
+    main_check = Typespec.to_guard(type, quote do var!(head) end)
+    term_check = Typespec.to_guard(type, quote do var!(tail) end)
+    [quote do
+      match?([_ | _], unquote(variable)) || raise FunctionClauseError
+      recursion_fn = fn
+        this, [] -> :ok
+        this, [var!(head) | var!(rest)] when is_list(var!(rest)) ->
+          unquote(main_check) || raise FunctionClauseError
+          this.(this, var!(rest))
+        this, [var!(head) | var!(tail)] ->
+          unquote(main_check) || raise FunctionClauseError
+          unquote(term_check) || raise FunctionClauseError
+          :ok
+      end
+
+      recursion_fn.(recursion_fn, unquote(variable))
+    end]
+  end
+  defp pre_statements({@t, _, [variable, {:nonempty_maybe_improper_list, _, [main_type, term_type]}]}) do
+    # TODO: DRY THIS UP WITH ABOVE ^^^
+    main_check = Typespec.to_guard(main_type, quote do var!(head) end)
+    term_check = Typespec.to_guard(term_type, quote do var!(tail) end)
+    [quote do
+      match?([_ | _], unquote(variable)) || raise FunctionClauseError
+      recursion_fn = fn
+        this, [] -> :ok
+        this, [var!(head) | var!(rest)] when is_list(var!(rest)) ->
+          unquote(main_check) || raise FunctionClauseError
+          this.(this, var!(rest))
+        this, [var!(head) | var!(tail)] ->
+          unquote(main_check) || raise FunctionClauseError
+          unquote(term_check) || raise FunctionClauseError
+          :ok
+      end
+
+      recursion_fn.(recursion_fn, unquote(variable))
+    end]
+  end
+  defp pre_statements({@t, _, [variable, {:nonempty_maybe_improper_list, _, _}]}) do
+    [quote do
+      match?([_ | _], unquote(variable)) || raise FunctionClauseError
+    end]
+  end
   defp pre_statements(_), do: []
 
   defp inject_prestatements([do: {:__block__, meta, terms}], prestatements) do
@@ -247,6 +292,39 @@ defmodule TypedHeaders.Redef do
     end]
   end
   defp post_statements({:nonempty_improper_list, _, _}, fn_name, type, value) do
+    [quote do
+      match?([_ | _], unquote(value)) || raise RuntimeError, message: "function #{unquote(fn_name)} expects type #{unquote(type)} #{inspect unquote(value)}"
+    end]
+  end
+  defp post_statements({:nonempty_maybe_improper_list, meta, [typedata]}, fn_name, type, value) do
+    post_statements({:nonempty_maybe_improper_list, meta, [typedata, typedata]}, fn_name, type, value)
+  end
+  defp post_statements({:nonempty_maybe_improper_list, _, [main_type, term_type]}, fn_name, type, value) do
+    main_check = Typespec.to_guard(main_type, quote do var!(head) end)
+    term_check = Typespec.to_guard(term_type, quote do var!(tail) end)
+
+    die = quote do
+      raise RuntimeError, message: "function #{unquote(fn_name)} expects type #{unquote(type)}, got #{inspect unquote(value)}"
+    end
+
+    [quote do
+      match?([_ | _], unquote(value)) || raise unquote(die)
+
+      recursion_fn = fn
+        this, [] ->:ok
+        this, [var!(head) | var!(rest)] when is_list(var!(rest)) ->
+          unquote(main_check) || unquote(die)
+          this.(this, var!(rest))
+        this, [var!(head) | var!(tail)] ->
+          unquote(main_check) || unquote(die)
+          unquote(term_check) || unquote(die)
+          :ok
+      end
+
+      recursion_fn.(recursion_fn, unquote(value))
+    end]
+  end
+  defp post_statements({:nonempty_maybe_improper_list, _, _}, fn_name, type, value) do
     [quote do
       match?([_ | _], unquote(value)) || raise RuntimeError, message: "function #{unquote(fn_name)} expects type #{unquote(type)} #{inspect unquote(value)}"
     end]

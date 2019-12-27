@@ -312,4 +312,156 @@ defmodule TypedHeadersTest.ListTypeTest do
     end
   end
 
+  def nonempty_improper_list_2_header(value :: nonempty_improper_list(integer, atom)) do
+    value
+  end
+
+  def nonempty_improper_list_2_retval(value) :: nonempty_improper_list(integer, atom) do
+    value
+  end
+
+  describe "nonempty_improper_list/2 typechecking works" do
+    test "in the header" do
+      assert [47 | :foo] == nonempty_improper_list_2_header([47 | :foo])
+      assert_raise FunctionClauseError, fn ->
+        nonempty_improper_list_2_header(:foo)
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_improper_list_2_header([])
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_improper_list_2_header([47, :foo])
+      end
+    end
+    test "in the retval" do
+      assert [47 | :foo] == nonempty_improper_list_2_retval([47 | :foo])
+      assert_raise RuntimeError, fn ->
+        nonempty_improper_list_2_retval([])
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_improper_list_2_retval(:foo)
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_improper_list_2_retval([47, :foo])
+      end
+    end
+  end
+
+  def nonempty_maybe_improper_list_header(value :: nonempty_maybe_improper_list) do
+    value
+  end
+
+  def nonempty_maybe_improper_list_retval(value) :: nonempty_maybe_improper_list do
+    value
+  end
+
+  describe "nonempty_maybe_improper_list/0 typechecking works" do
+    test "in the header" do
+      assert [47] == nonempty_maybe_improper_list_header([47])
+      assert [47 | :foo] == nonempty_maybe_improper_list_header([47 | :foo])
+      assert [47, 42] == nonempty_maybe_improper_list_header([47, 42])
+      assert_raise FunctionClauseError, fn ->
+        nonempty_maybe_improper_list_header(:foo)
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_maybe_improper_list_header([])
+      end
+    end
+    test "in the retval" do
+      assert [47] == nonempty_maybe_improper_list_header([47])
+      assert [47 | :foo] == nonempty_maybe_improper_list_retval([47 | :foo])
+      assert [47, 42] == nonempty_maybe_improper_list_retval([47, 42])
+      assert_raise RuntimeError, fn ->
+        nonempty_maybe_improper_list_retval(:foo)
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_maybe_improper_list_retval([])
+      end
+    end
+  end
+
+  def nonempty_maybe_improper_list_1_header(value :: nonempty_maybe_improper_list(integer)) do
+    value
+  end
+
+  def nonempty_maybe_improper_list_1_retval(value) :: nonempty_maybe_improper_list(integer) do
+    value
+  end
+
+  describe "nonempty_maybe_improper_list/1 typechecking works" do
+    test "in the header" do
+      assert [47] == nonempty_maybe_improper_list_1_header([47])
+      assert [47 | 42] == nonempty_maybe_improper_list_1_header([47 | 42])
+      assert [47, 42] == nonempty_maybe_improper_list_1_header([47, 42])
+      assert_raise FunctionClauseError, fn ->
+        nonempty_maybe_improper_list_1_header(:foo)
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_maybe_improper_list_1_header([])
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_maybe_improper_list_1_header([47, :foo])
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_maybe_improper_list_1_header([47 | :foo])
+      end
+    end
+    test "in the retval" do
+      assert [47] == nonempty_maybe_improper_list_1_retval([47])
+      assert [47 | 42] == nonempty_maybe_improper_list_1_retval([47 | 42])
+      assert [47, 42] == nonempty_maybe_improper_list_1_retval([47, 42])
+      assert_raise RuntimeError, fn ->
+        nonempty_maybe_improper_list_1_retval([])
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_maybe_improper_list_1_retval(:foo)
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_maybe_improper_list_1_retval([47, :foo])
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_maybe_improper_list_1_retval([47 | :foo])
+      end
+    end
+  end
+
+  def nonempty_maybe_improper_list_2_header(value :: nonempty_maybe_improper_list(integer, atom)) do
+    value
+  end
+
+  def nonempty_maybe_improper_list_2_retval(value) :: nonempty_maybe_improper_list(integer, atom) do
+    value
+  end
+
+  describe "nonempty_maybe_improper_list/2 typechecking works" do
+    test "in the header" do
+      assert [47] == nonempty_maybe_improper_list_2_header([47])
+      assert [47 | :foo] == nonempty_maybe_improper_list_2_header([47 | :foo])
+      assert [47, 42] == nonempty_maybe_improper_list_2_header([47, 42])
+      assert_raise FunctionClauseError, fn ->
+        nonempty_maybe_improper_list_2_header(:foo)
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_maybe_improper_list_2_header([])
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_maybe_improper_list_2_header([47, :foo])
+      end
+    end
+    test "in the retval" do
+      assert [47] == nonempty_maybe_improper_list_2_header([47])
+      assert [47 | :foo] == nonempty_maybe_improper_list_2_retval([47 | :foo])
+      assert [47, 42] == nonempty_maybe_improper_list_2_retval([47, 42])
+      assert_raise RuntimeError, fn ->
+        nonempty_maybe_improper_list_2_retval([])
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_maybe_improper_list_2_retval(:foo)
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_maybe_improper_list_2_retval([47, :foo])
+      end
+    end
+  end
+
 end
