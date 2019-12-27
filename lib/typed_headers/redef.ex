@@ -125,6 +125,11 @@ defmodule TypedHeaders.Redef do
       recursion_fn.(recursion_fn, unquote(variable))
     end]
   end
+  defp pre_statements({@t, _, [variable, {:nonempty_improper_list, _, _}]}) do
+    [quote do
+      match?([_ | _], unquote(variable)) || raise FunctionClauseError
+    end]
+  end
   defp pre_statements(_), do: []
 
   defp inject_prestatements([do: {:__block__, meta, terms}], prestatements) do
@@ -176,6 +181,11 @@ defmodule TypedHeaders.Redef do
       end
 
       recursion_fn.(recursion_fn, unquote(value))
+    end]
+  end
+  defp post_statements({:nonempty_improper_list, _, _}, fn_name, type, value) do
+    [quote do
+      match?([_ | _], unquote(value)) || raise RuntimeError, message: "function #{unquote(fn_name)} expects type #{unquote(type)} #{inspect unquote(value)}"
     end]
   end
   defp post_statements(_, _, _, _), do: []
