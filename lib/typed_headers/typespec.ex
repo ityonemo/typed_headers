@@ -64,6 +64,9 @@ defmodule TypedHeaders.Typespec do
   def to_guard({:nonempty_list, _, _}, variable) do
     and_fn(typefn(:list, variable), {:is_list, @full_context, [{:tl, @full_context, [variable]}]})
   end
+  def to_guard({:maybe_improper_list, _, _}, variable) do
+    typefn(:list, variable)
+  end
 
   def to_string([]), do: "[]"
   def to_string([spec]), do: "[#{__MODULE__.to_string(spec)}]"
