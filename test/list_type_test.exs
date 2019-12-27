@@ -275,4 +275,41 @@ defmodule TypedHeadersTest.ListTypeTest do
     end
   end
 
+  def nonempty_improper_list_1_header(value :: nonempty_improper_list(integer)) do
+    value
+  end
+
+  def nonempty_improper_list_1_retval(value) :: nonempty_improper_list(integer) do
+    value
+  end
+
+  describe "nonempty_improper_list/1 typechecking works" do
+    # NB: the nonempty_improper_list type definition is a bit strange since it doesn't
+    # admit a naked end term as the result.
+    test "in the header" do
+      assert [47 | 42] == nonempty_improper_list_1_header([47 | 42])
+      assert_raise FunctionClauseError, fn ->
+        nonempty_improper_list_1_header(:foo)
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_improper_list_1_header([])
+      end
+      assert_raise FunctionClauseError, fn ->
+        assert [47, 42] == nonempty_improper_list_1_header([47, 42])
+      end
+    end
+    test "in the retval" do
+      assert [47 | 42] == nonempty_improper_list_1_retval([47 | 42])
+      assert_raise RuntimeError, fn ->
+        nonempty_improper_list_1_retval([])
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_improper_list_1_retval(:foo)
+      end
+      assert_raise RuntimeError, fn ->
+        assert [47, 42] == nonempty_improper_list_1_retval([47, 42])
+      end
+    end
+  end
+
 end
