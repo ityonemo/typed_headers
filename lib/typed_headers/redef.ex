@@ -22,6 +22,10 @@ defmodule TypedHeaders.Redef do
     rebuild_code(:def, fn_name, meta, params, nil, block)
   end
 
+  # substitute [] for nil, for zero-arity functions without params parens
+  def rebuild_code(macro, fn_name, meta, nil, retval_type, block) do
+    rebuild_code(macro, fn_name, meta, [], retval_type, block)
+  end
   def rebuild_code(macro, fn_name, meta, params, retval_type, block) do
     naked_params = Enum.map(params, &naked_params/1)
     header = case Enum.flat_map(params, &when_statements/1) do
@@ -58,6 +62,8 @@ defmodule TypedHeaders.Redef do
 
   @list_types List.types
 
+  # filter functions
+  defp pre_statements({@t, _, [_variable, [{:->, _, _}]]}), do: []
   defp pre_statements({@t, _, [variable, [spec]]}) do
     List.pre_checks({:list, @full_context, [spec]}, variable)
   end
@@ -73,6 +79,8 @@ defmodule TypedHeaders.Redef do
     [do: {:__block__, [], prestatements ++ [term]}]
   end
 
+
+  defp post_checks([{:->, _, _}], _, _, _), do: []
   defp post_checks([typedata], fn_name, type, value) do
     List.post_checks({:list, [], [typedata]}, fn_name, type, value)
   end
