@@ -94,15 +94,15 @@ defmodule TypedHeaders.List do
   def iter_checks(_, _, _), do: []
 
 
-  def __nonempty_check__(value, die) do
+  def __nonempty_check__(variable, die) do
     quote do
-      match?([_ | _], unquote(value)) || raise unquote(die)
+      match?([_ | _], unquote(variable)) || raise unquote(die)
     end
   end
 
-  def check(value, main_check, term_check, die, opts \\ []) do
-    # generates a check if we need the checked value to be nonempty.
-    nonempty_check = if opts[:nonempty], do: __nonempty_check__(value, die)
+  def check(variable, main_check, term_check, die, opts \\ []) do
+    # generates a check if we need the checked variable to be nonempty.
+    nonempty_check = if opts[:nonempty], do: __nonempty_check__(variable, die)
 
     # generates a check against the final [] if we are
     eol_check = if opts[:improper], do: die
@@ -121,11 +121,11 @@ defmodule TypedHeaders.List do
           nil
       end
 
-      recursion_fn.(recursion_fn, unquote(value))
+      recursion_fn.(recursion_fn, unquote(variable))
     end
   end
 
-  def list_check(value, die) do
+  def list_check(variable, die) do
     quote do
       recursion_fn = fn
         this, [] -> nil
@@ -135,7 +135,7 @@ defmodule TypedHeaders.List do
           unquote(die)
       end
 
-      recursion_fn.(recursion_fn, unquote(value))
+      recursion_fn.(recursion_fn, unquote(variable))
     end
   end
 end
