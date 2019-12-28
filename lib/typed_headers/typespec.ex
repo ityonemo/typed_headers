@@ -37,8 +37,14 @@ defmodule TypedHeaders.Typespec do
   def to_guard({:pos_integer, _, _}, variable) do
     and_fn(typefn(:integer, variable), {:>, @full_context, [variable, 0]})
   end
+  def to_guard([{:->, _, [[{:..., _, _}], _]}], variable) do
+    typefn(:function, variable)
+  end
   def to_guard([{:->, _, args}], variable) do
     function(args, variable)
+  end
+  def to_guard({:->, _, [[{:..., _, _}], _]}, variable) do
+    typefn(:function, variable)
   end
   def to_guard({:->, _, args}, variable) do
     function(args, variable)
