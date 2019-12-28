@@ -1,5 +1,7 @@
 defmodule TypedHeaders.Typespec do
 
+  alias TypedHeaders.Bitstring
+
   @typefn %{
     integer:   :is_integer,
     float:     :is_float,
@@ -35,8 +37,17 @@ defmodule TypedHeaders.Typespec do
   def to_guard({:pos_integer, _, _}, variable) do
     and_fn(typefn(:integer, variable), {:>, @full_context, [variable, 0]})
   end
+  #def to_guard([{:->, _, args}], variable) do
+  #  function(args, variable)
+  #end
+  #def to_guard({:->, _, args}, variable) do
+  #  function(args, variable)
+  #end
   def to_guard([_], variable) do
     typefn(:list, variable)
+  end
+  def to_guard({:<<>>, _, [spec]}, variable) do
+    Bitstring.descriptor_to_guard(spec, variable)
   end
   def to_guard(literal, variable) when is_integer(literal) or is_atom(literal) or (literal == []) do
     {:===, @full_context, [variable, literal]}
@@ -94,4 +105,8 @@ defmodule TypedHeaders.Typespec do
         {:>=, @full_context, [variable, a]},
         {:<=, @full_context, [variable, b]}))
   end
+
+  #def function([args, _ret], variable) do
+  #  {:is_function, @full_context, [variable, length(args)]}
+  #end
 end
