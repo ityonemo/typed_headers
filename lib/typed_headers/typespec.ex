@@ -1,6 +1,7 @@
 defmodule TypedHeaders.Typespec do
 
   alias TypedHeaders.Bitstring
+  alias TypedHeaders.List
 
   @typefn %{
     integer:   :is_integer,
@@ -19,9 +20,13 @@ defmodule TypedHeaders.Typespec do
     bitstring: :is_bitstring,
     # derived types
     fun:       :is_function,
+    module:    :is_atom,
+    node:      :is_atom
   }
   @builtins Map.keys(@typefn)
   @full_context [context: Elixir, import: Kernel]
+
+  @list_types List.types
 
   @literal_brackets [:<<>>, :{}]
 
@@ -49,7 +54,10 @@ defmodule TypedHeaders.Typespec do
   def to_guard({:->, _, args}, variable) do
     function(args, variable)
   end
-  def to_guard([_], variable) do
+  def to_guard([{:..., _, _}], variable) do
+    typefn(:list, variable)
+  end
+  def to_guard([_ | _], variable) do
     typefn(:list, variable)
   end
   def to_guard({:<<>>, _, [spec]}, variable) do
@@ -78,20 +86,25 @@ defmodule TypedHeaders.Typespec do
         {:>=, @full_context, [variable, 0]}),
       {:===, @full_context, [variable, :infinity]})
   end
-  def to_guard({:nonempty_list, _, _}, variable) do
-    and_fn(typefn(:list, variable), {:is_list, @full_context, [{:tl, @full_context, [variable]}]})
-  end
-  def to_guard({:maybe_improper_list, _, _}, variable) do
+  def to_guard({list_type, _, _}, variable) when list_type in @list_types do
     typefn(:list, variable)
   end
-  def to_guard({:nonempty_improper_list, _, _}, variable) do
-    typefn(:list, variable)
-  end
-  def to_guard({:nonempty_maybe_improper_list, _, _}, variable) do
-    typefn(:list, variable)
+  def to_guard({:mfa, _, _}, variable) do
+    and_fn(
+      and_fn(
+        and_fn(
+          typefn(:tuple, variable),
+          {:==, @full_context, [{:tuple_size, @full_context, [variable]}, 3]}),
+        and_fn(
+          typefn(:atom, {:elem, @full_context, [variable, 0]}),
+          typefn(:atom, {:elem, @full_context, [variable, 1]}))),
+      typefn(:list, {:elem, @full_context, [variable, 2]}))
   end
 
   def to_string([]), do: "[]"
+  def to_string([{:..., _, _}]), do: "[...]"
+  def to_string([spec, {:..., _, _}]), do: "[#{__MODULE__.to_string(spec)}...]"
+  def to_string(spec = [{atom, _} | _]) when is_atom(atom), do: inspect(spec)
   def to_string([spec]), do: "[#{__MODULE__.to_string(spec)}]"
   def to_string({:<<>>, _, []}), do: "<<>>"
   def to_string({:{}, _, []}), do: "{}"

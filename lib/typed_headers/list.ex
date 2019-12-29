@@ -1,7 +1,8 @@
 defmodule TypedHeaders.List do
   # code generators for checking lists
 
-  def types, do: ~w[list nonempty_list maybe_improper_list nonempty_improper_list nonempty_maybe_improper_list]a
+  def types, do: ~w[list nonempty_list maybe_improper_list nonempty_improper_list nonempty_maybe_improper_list
+    charlist nonempty_charlist]a
 
   alias TypedHeaders.Typespec
 
@@ -20,6 +21,7 @@ defmodule TypedHeaders.List do
     iter_checks(t, variable, die(:foo, :pre_check))
   end
 
+  @spec post_checks(Macro.t, atom, String.t, Macro.t) :: Macro.t
   def post_checks(t, fn_name, type, variable) do
     iter_checks(t, variable, die(fn_name, type, variable, :post_check))
   end
@@ -90,6 +92,25 @@ defmodule TypedHeaders.List do
   # t:nonempty_maybe_improper_list/0
   def iter_checks({:nonempty_maybe_improper_list, _, _}, variable, die) do
     [__nonempty_check__(variable, die)]
+  end
+  def iter_checks({:charlist, meta, _}, variable, die) do
+    iter_checks({:list, meta, [{:char, meta, nil}]}, variable, die)
+  end
+  def iter_checks({:nonempty_charlist, meta, _}, variable, die) do
+    iter_checks({:nonempty_list, meta, [{:char, meta, nil}]}, variable, die)
+  end
+  def iter_checks(kwl = [{atom, _} | _], variable, die) when is_atom(atom) do
+    Enum.map(kwl, fn {key, spec} ->
+      guard = Typespec.to_guard(spec, quote do var!(value) end)
+      quote do
+        Keyword.has_key?(unquote(variable), unquote(key)) || unquote(die)
+        case unquote(variable)[unquote(key)] do
+          var!(value) when unquote(guard) ->
+            nil  # TODO: make this a recursive call.
+          _ -> unquote(die)
+        end
+      end
+    end)
   end
   def iter_checks(_, _, _), do: []
 

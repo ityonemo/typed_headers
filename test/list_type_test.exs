@@ -464,4 +464,163 @@ defmodule TypedHeadersTest.ListTypeTest do
     end
   end
 
+  def nonempty_list_literal_header(value :: [...]) do
+    value
+  end
+
+  def nonempty_list_literal_retval(value) :: [...] do
+    value
+  end
+
+  describe "nonempty list literal typechecking works" do
+    test "in the header" do
+      assert [47] == nonempty_list_literal_header([47])
+      assert [47, 42] == nonempty_list_literal_header([47, 42])
+      assert_raise FunctionClauseError, fn ->
+        nonempty_list_literal_header([47 | :foo])
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_list_literal_header(:foo)
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_list_literal_header([])
+      end
+    end
+    test "in the retval" do
+      assert [47] == nonempty_list_literal_retval([47])
+      assert [47, 42] == nonempty_list_literal_retval([47, 42])
+      assert_raise RuntimeError, fn ->
+        nonempty_list_literal_retval([47 | :foo])
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_list_literal_retval([])
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_list_literal_retval(:foo)
+      end
+    end
+  end
+
+  def nonempty_list_literal_1_header(value :: [integer, ...]) do
+    value
+  end
+
+  def nonempty_list_literal_1_retval(value) :: [integer, ...] do
+    value
+  end
+
+  describe "nonempty list literal with parameter typechecking works" do
+    test "in the header" do
+      assert [47] == nonempty_list_literal_1_header([47])
+      assert [47, 42] == nonempty_list_literal_1_header([47, 42])
+      assert_raise FunctionClauseError, fn ->
+        nonempty_list_literal_1_header([47, :foo])
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_list_literal_1_header([47 | :foo])
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_list_literal_1_header(:foo)
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_list_literal_1_header([])
+      end
+    end
+    test "in the retval" do
+      assert [47] == nonempty_list_literal_1_retval([47])
+      assert [47, 42] == nonempty_list_literal_1_retval([47, 42])
+      assert_raise RuntimeError, fn ->
+        nonempty_list_literal_1_retval([47, :foo])
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_list_literal_1_retval([47 | :foo])
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_list_literal_1_retval([])
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_list_literal_1_retval(:foo)
+      end
+    end
+  end
+
+  def charlist_header(value :: charlist) do
+    value
+  end
+  def charlist_retval(value) :: charlist do
+    value
+  end
+
+  describe "charlist typechecking works" do
+    test "in the header" do
+      assert 'foo' == charlist_header('foo')
+      assert '' == charlist_header('')
+
+      assert_raise FunctionClauseError, fn ->
+        charlist_header("foo")
+      end
+      assert_raise FunctionClauseError, fn ->
+        charlist_header([?f, ?o, :o])
+      end
+      assert_raise FunctionClauseError, fn ->
+        charlist_header([?f, ?o | ?o])
+      end
+    end
+    test "in the retval" do
+      assert 'foo' == charlist_retval('foo')
+      assert '' == charlist_retval('')
+
+      assert_raise RuntimeError, fn ->
+        charlist_retval("foo")
+      end
+      assert_raise RuntimeError, fn ->
+        charlist_retval([?f, ?o, :o])
+      end
+      assert_raise RuntimeError, fn ->
+        charlist_retval([?f, ?o | ?o])
+      end
+    end
+  end
+
+  def nonempty_charlist_header(value :: nonempty_charlist) do
+    value
+  end
+  def nonempty_charlist_retval(value) :: nonempty_charlist do
+    value
+  end
+
+  describe "nonempty charlist typechecking works" do
+    test "in the header" do
+      assert 'foo' == nonempty_charlist_header('foo')
+
+      assert_raise FunctionClauseError, fn ->
+        nonempty_charlist_header('')
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_charlist_header("foo")
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_charlist_header([?f, ?o, :o])
+      end
+      assert_raise FunctionClauseError, fn ->
+        nonempty_charlist_header([?f, ?o | ?o])
+      end
+    end
+    test "in the retval" do
+      assert 'foo' == nonempty_charlist_retval('foo')
+
+      assert_raise RuntimeError, fn ->
+        nonempty_charlist_retval('')
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_charlist_retval("foo")
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_charlist_retval([?f, ?o, :o])
+      end
+      assert_raise RuntimeError, fn ->
+        nonempty_charlist_retval([?f, ?o | ?o])
+      end
+    end
+  end
 end
