@@ -60,8 +60,11 @@ defmodule TypedHeaders.Typespec do
   def to_guard([_ | _], variable) do
     typefn(:list, variable)
   end
-  def to_guard({:<<>>, _, [spec]}, variable) do
+  def to_guard({:<<>>, _, spec}, variable) when length(spec) > 0 do
     Bitstring.descriptor_to_guard(spec, variable)
+  end
+  def to_guard({:%{}, _, spec}, variable) do
+    TypedHeaders.Map.descriptor_to_guard(spec, variable)
   end
   def to_guard(literal, variable) when is_integer(literal) or is_atom(literal) or (literal == []) do
     {:===, @full_context, [variable, literal]}
@@ -99,6 +102,13 @@ defmodule TypedHeaders.Typespec do
           typefn(:atom, {:elem, @full_context, [variable, 0]}),
           typefn(:atom, {:elem, @full_context, [variable, 1]}))),
       typefn(:list, {:elem, @full_context, [variable, 2]}))
+  end
+  def to_guard({:identifier, _, _}, variable) do
+    or_fn(
+      or_fn(
+        typefn(:pid, variable),
+        typefn(:port, variable)),
+      typefn(:reference, variable))
   end
 
   def to_string([]), do: "[]"

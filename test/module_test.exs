@@ -113,6 +113,4 @@ defmodule TypedHeadersTest.ModuleTest do
       end
     end
   end
-
-
 end

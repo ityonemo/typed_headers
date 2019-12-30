@@ -195,4 +195,35 @@ defmodule TypedHeaderTest.DerivedTypesTest do
       end
     end
   end
+
+  def identifier_header(value :: identifier) do
+    value
+  end
+
+  def identifier_retval(value) :: identifier do
+    value
+  end
+
+  describe "for identifier builtin" do
+    test "header is checkable" do
+      assert self() == identifier_header(self())
+      {:ok, port} = :gen_udp.open(0)
+      assert port == identifier_header(port)
+      ref = make_ref()
+      assert ref == identifier_header(ref)
+      assert_raise FunctionClauseError, fn ->
+        identifier_header(:foo)
+      end
+    end
+    test "retval is checkable" do
+      assert self() == identifier_retval(self())
+      {:ok, port} = :gen_udp.open(0)
+      assert port == identifier_retval(port)
+      ref = make_ref()
+      assert ref == identifier_retval(ref)
+      assert_raise RuntimeError, fn ->
+        identifier_retval(:foo)
+      end
+    end
+  end
 end

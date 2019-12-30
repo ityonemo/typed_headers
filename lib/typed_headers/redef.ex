@@ -5,7 +5,6 @@ defmodule TypedHeaders.Redef do
 
   alias TypedHeaders.Typespec
   alias TypedHeaders.List
-  alias TypedHeaders.Module
 
   defmacro defp({@t, _, [{fn_name, meta, params}, retval_type]}, block) do
     rebuild_code(:def, fn_name, meta, params, retval_type, block)
@@ -62,7 +61,7 @@ defmodule TypedHeaders.Redef do
   defp when_statements({_varinfo, _, atom}) when is_atom(atom), do: []
 
   @list_types List.types
-  @module_types Module.types
+  @module_types TypedHeaders.Module.types
 
   # filter functions
   defp pre_statements({@t, _, [_variable, [{:->, _, _}]]}), do: []
@@ -82,7 +81,7 @@ defmodule TypedHeaders.Redef do
     List.pre_checks(spec, variable)
   end
   defp pre_statements({@t, _, [variable, spec = {type, _, _}]}) when type in @module_types do
-    Module.pre_checks(spec, variable)
+    TypedHeaders.Module.pre_checks(spec, variable)
   end
   defp pre_statements(_), do: []
 
@@ -112,7 +111,7 @@ defmodule TypedHeaders.Redef do
   end
   defp post_checks(spec = {module_type, _, _}, fn_name, type, value)
       when module_type in @module_types do
-    Module.post_checks(spec, fn_name, type, value)
+    TypedHeaders.Module.post_checks(spec, fn_name, type, value)
   end
   defp post_checks(_, _, _, _), do: []
 

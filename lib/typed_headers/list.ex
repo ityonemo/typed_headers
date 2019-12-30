@@ -2,7 +2,7 @@ defmodule TypedHeaders.List do
   # code generators for checking lists
 
   def types, do: ~w[list nonempty_list maybe_improper_list nonempty_improper_list nonempty_maybe_improper_list
-    charlist nonempty_charlist]a
+    charlist nonempty_charlist keyword]a
 
   alias TypedHeaders.Typespec
 
@@ -111,6 +111,23 @@ defmodule TypedHeaders.List do
         end
       end
     end)
+  end
+  # t:keyword/1
+  def iter_checks({:keyword, _, [spec]}, variable, die) do
+    value_guard = Typespec.to_guard(spec, quote do var!(v) end)
+    main_check = quote do
+      match?({k, var!(v)} when is_atom(k) and unquote(value_guard), var!(head))
+    end
+    term_check = quote do var!(tail) == [] end
+    [check(variable, main_check, term_check, die)]
+  end
+  # t:keyword/0
+  def iter_checks({:keyword, _, _}, variable, die) do
+    main_check = quote do
+      match?({k, _v} when is_atom(k), var!(head))
+    end
+    term_check = quote do var!(tail) == [] end
+    [check(variable, main_check, term_check, die)]
   end
   def iter_checks(_, _, _), do: []
 

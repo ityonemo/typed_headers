@@ -59,4 +59,35 @@ defmodule TypedHeadersTest.BitstringTypesTest do
       end
     end
   end
+
+  def bitstring_duple_header(value :: <<_::3, _::_ * 7>>) do
+    value
+  end
+  def bitstring_duple_retval(value) :: <<_::3, _::_ * 7>> do
+    value
+  end
+
+  describe "for bitstrings you can filter by size + unit" do
+    test "in the header" do
+      assert <<10::10>> == bitstring_duple_header(<<10::10>>)
+      assert <<10::17>> == bitstring_duple_header(<<10::17>>)
+      assert_raise FunctionClauseError, fn ->
+        bitstring_duple_header(:foo)
+      end
+      assert_raise FunctionClauseError, fn ->
+        bitstring_duple_header("ab")
+      end
+    end
+    test "in the retval" do
+      assert <<10::10>> == bitstring_duple_retval(<<10::10>>)
+      assert <<10::17>> == bitstring_duple_retval(<<10::17>>)
+      assert_raise RuntimeError, fn ->
+        bitstring_duple_retval(:foo)
+      end
+      assert_raise RuntimeError, fn ->
+        bitstring_duple_retval("ab")
+      end
+    end
+  end
+
 end
