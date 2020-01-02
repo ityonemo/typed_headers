@@ -29,24 +29,20 @@ defmodule TypedHeaders.Module do
     end]
   end
 
-  def post_checks({:module, _, _}, fn_name, _type, variable) do
+  def deep_checks({:module, _, _}, variable, die) do
     [quote do
       function_exported?(unquote(variable), :module_info, 0) ||
-        raise RuntimeError, message: "function #{unquote(fn_name)} expects to return a module, #{inspect unquote(variable)} is not available"
+        raise unquote(die)
     end]
   end
-  def post_checks({:mfa, _, _}, fn_name, _type, variable) do
+  def deep_checks({:mfa, _, _}, variable, die) do
     [quote do
       {m, f, a} = unquote(variable)
       function_exported?(m, f, length(a)) ||
-        raise RuntimeError, message: "function #{unquote(fn_name)} expects to return an mfa, module #{m} does not have a function #{f} of arity #{length(a)}"
+        raise unquote(die)
     end]
   end
-  def post_checks({:node, _, _}, fn_name, _type, variable) do
-    die = quote do
-      raise RuntimeError, message: "function #{unquote(fn_name)} expects to return an node, atom #{unquote variable} doesnt' look like a node"
-    end
-
+  def deep_checks({:node, _, _}, variable, die) do
     [quote do
       unquote(variable)
       |> Atom.to_string

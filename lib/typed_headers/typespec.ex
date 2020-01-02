@@ -127,7 +127,7 @@ defmodule TypedHeaders.Typespec do
   @spec to_lambda(Macro.t, Macro.t) :: lambda
   def to_lambda(typespec, die) do
     guard = when_result(typespec)
-    deep_check = to_deep_check(typespec)
+    deep_check = to_deep_check(typespec, die)
     quote do
       fn
         unquote(guard) ->
@@ -142,39 +142,39 @@ defmodule TypedHeaders.Typespec do
     {:when, [], [content, to_guard(typedata, content)]}
   end
 
-  def to_deep_check(typedata) do
+  def to_deep_check(typedata, die) do
     variable = quote do var!(content) end
-    post_checks(typedata, :none, "", variable)
+    deep_checks(typedata, variable, die)
   end
 
   @list_types List.types
   @module_types TypedHeaders.Module.types
 
-  def post_checks([{:->, _, _}], _, _, _), do: []
-  def post_checks([{:..., _, _}], fn_name, type, value) do
-    List.post_checks({:nonempty_list, @full_context, nil}, fn_name, type, value)
+  def deep_checks([{:->, _, _}], _, _), do: []
+  def deep_checks([{:..., _, _}], variable, die) do
+    List.deep_checks({:nonempty_list, @full_context, nil}, variable, die)
   end
-  def post_checks([t, {:..., _, _}], fn_name, type, value) do
-    List.post_checks({:nonempty_list, @full_context, [t]}, fn_name, type, value)
+  def deep_checks([t, {:..., _, _}], variable, die) do
+    List.deep_checks({:nonempty_list, @full_context, [t]}, variable, die)
   end
-  def post_checks(spec = [{atom, _} | _], fn_name, type, value) when is_atom(atom) do
-    List.post_checks(spec, fn_name, type, value)
+  def deep_checks(spec = [{atom, _} | _], variable, die) when is_atom(atom) do
+    List.deep_checks(spec, variable, die)
   end
-  def post_checks([typedata], fn_name, type, value) do
-    List.post_checks({:list, [], [typedata]}, fn_name, type, value)
+  def deep_checks([typedata], variable, die) do
+    List.deep_checks({:list, [], [typedata]}, variable, die)
   end
-  def post_checks(spec = {list_type, _, _}, fn_name, type, value)
+  def deep_checks(spec = {list_type, _, _}, variable, die)
       when list_type in @list_types do
-    List.post_checks(spec, fn_name, type, value)
+    List.deep_checks(spec, variable, die)
   end
-  def post_checks(spec = {module_type, _, _}, fn_name, type, value)
+  def deep_checks(spec = {module_type, _, _}, variable, die)
       when module_type in @module_types do
-    TypedHeaders.Module.post_checks(spec, fn_name, type, value)
+    TypedHeaders.Module.deep_checks(spec, variable, die)
   end
-  def post_checks(spec = {:%{}, _, _}, fn_name, type, value) do
-    TypedHeaders.Map.post_checks(spec, fn_name, type, value)
+  def deep_checks(spec = {:%{}, _, _}, variable, die) do
+    TypedHeaders.Map.deep_checks(spec, variable, die)
   end
-  def post_checks(_, _, _, _), do: []
+  def deep_checks(_, _, _), do: []
 
 
   def typefn(type, variable), do: {@typefn[type], @full_context, [variable]}

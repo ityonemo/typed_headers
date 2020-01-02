@@ -19,88 +19,83 @@ defmodule TypedHeaders.List do
 
   @spec pre_checks(Macro.t, Macro.t) :: Macro.t
   def pre_checks(t, variable) do
-    iter_checks(t, variable, die(:foo, :pre_check))
+    deep_checks(t, variable, die(:foo, :pre_check))
   end
 
-  @spec post_checks(Macro.t, atom, String.t, Macro.t) :: Macro.t
-  def post_checks(t, fn_name, type, variable) do
-    iter_checks(t, variable, die(fn_name, type, variable, :post_check))
-  end
-
-  ## ITERATIVE CHECKS
+  ## DEEP CHECKS
 
   # t:list/1
-  def iter_checks({:list, _, [typedata]}, variable, die) do
+  def deep_checks({:list, _, [typedata]}, variable, die) do
     main_check = Typespec.to_guard(typedata, quote do var!(head) end)
     term_check = quote do var!(tail) == [] end
     [check(variable, main_check, term_check, die)]
   end
   # t:list/0
-  def iter_checks({:list, _, _}, variable, die) do
+  def deep_checks({:list, _, _}, variable, die) do
     [list_check(variable, die)]
   end
   # t:nonempty_list/1
-  def iter_checks({:nonempty_list, _, [typedata]}, variable, die) do
+  def deep_checks({:nonempty_list, _, [typedata]}, variable, die) do
     main_check = Typespec.to_guard(typedata, quote do var!(head) end)
     term_check = quote do var!(tail) == [] end
     [check(variable, main_check, term_check, die, nonempty: true)]
   end
   # t:nonempty_list/0
-  def iter_checks({:nonempty_list, _, _}, variable, die) do
+  def deep_checks({:nonempty_list, _, _}, variable, die) do
     main_check = true
     term_check = quote do var!(tail) == [] end
     [check(variable, main_check, term_check, die, nonempty: true)]
   end
   # t:maybe_improper_list/1
-  def iter_checks({:maybe_improper_list, meta, [typedata]}, variable, die) do
-    iter_checks({:maybe_improper_list, meta, [typedata, typedata]}, variable, die)
+  def deep_checks({:maybe_improper_list, meta, [typedata]}, variable, die) do
+    deep_checks({:maybe_improper_list, meta, [typedata, typedata]}, variable, die)
   end
   # t:maybe_improper_list/2
-  def iter_checks({:maybe_improper_list, _, [main_type, term_type]}, variable, die) do
+  def deep_checks({:maybe_improper_list, _, [main_type, term_type]}, variable, die) do
     main_check = Typespec.to_guard(main_type, quote do var!(head) end)
     term_check = Typespec.to_guard(term_type, quote do var!(tail) end)
 
     [check(variable, main_check, term_check, die)]
   end
   # t:maybe_improper_list/0... anything goes, no need to check any()
-  def iter_checks({:maybe_improper_list, _, _}, _variable, _die), do: []
+  def deep_checks({:maybe_improper_list, _, _}, _variable, _die), do: []
   # t:nonempty_improper_list/1
-  def iter_checks({:nonempty_improper_list, meta, [typedata]}, variable, die) do
-    iter_checks({:nonempty_improper_list, meta, [typedata, typedata]}, variable, die)
+  def deep_checks({:nonempty_improper_list, meta, [typedata]}, variable, die) do
+    deep_checks({:nonempty_improper_list, meta, [typedata, typedata]}, variable, die)
   end
   # t:nonempty_improper_list/2
-  def iter_checks({:nonempty_improper_list, _, [main_type, term_type]}, variable, die) do
+  def deep_checks({:nonempty_improper_list, _, [main_type, term_type]}, variable, die) do
     main_check = Typespec.to_guard(main_type, quote do var!(head) end)
     term_check = Typespec.to_guard(term_type, quote do var!(tail) end)
 
     [check(variable, main_check, term_check, die, nonempty: true, improper: true)]
   end
   # t:nonempty_improper_list/0
-  def iter_checks({:nonempty_improper_list, _, _}, variable, die) do
+  def deep_checks({:nonempty_improper_list, _, _}, variable, die) do
     [__nonempty_check__(variable, die)]
   end
   # t:nonempty_maybe_improper_list/1
-  def iter_checks({:nonempty_maybe_improper_list, meta, [main_type]}, variable, die) do
-    iter_checks({:nonempty_maybe_improper_list, meta, [main_type, main_type]}, variable, die)
+  def deep_checks({:nonempty_maybe_improper_list, meta, [main_type]}, variable, die) do
+    deep_checks({:nonempty_maybe_improper_list, meta, [main_type, main_type]}, variable, die)
   end
   # t:nonempty_maybe_improper_list/2
-  def iter_checks({:nonempty_maybe_improper_list, _, [main_type, term_type]}, variable, die) do
+  def deep_checks({:nonempty_maybe_improper_list, _, [main_type, term_type]}, variable, die) do
     main_check = Typespec.to_guard(main_type, quote do var!(head) end)
     term_check = Typespec.to_guard(term_type, quote do var!(tail) end)
 
     [check(variable, main_check, term_check, die, nonempty: true)]
   end
   # t:nonempty_maybe_improper_list/0
-  def iter_checks({:nonempty_maybe_improper_list, _, _}, variable, die) do
+  def deep_checks({:nonempty_maybe_improper_list, _, _}, variable, die) do
     [__nonempty_check__(variable, die)]
   end
-  def iter_checks({:charlist, meta, _}, variable, die) do
-    iter_checks({:list, meta, [{:char, meta, nil}]}, variable, die)
+  def deep_checks({:charlist, meta, _}, variable, die) do
+    deep_checks({:list, meta, [{:char, meta, nil}]}, variable, die)
   end
-  def iter_checks({:nonempty_charlist, meta, _}, variable, die) do
-    iter_checks({:nonempty_list, meta, [{:char, meta, nil}]}, variable, die)
+  def deep_checks({:nonempty_charlist, meta, _}, variable, die) do
+    deep_checks({:nonempty_list, meta, [{:char, meta, nil}]}, variable, die)
   end
-  def iter_checks(kwl = [{atom, _} | _], variable, die) when is_atom(atom) do
+  def deep_checks(kwl = [{atom, _} | _], variable, die) when is_atom(atom) do
     Enum.map(kwl, fn {key, spec} ->
       guard = Typespec.to_guard(spec, quote do var!(value) end)
       quote do
@@ -114,7 +109,7 @@ defmodule TypedHeaders.List do
     end)
   end
   # t:keyword/1
-  def iter_checks({:keyword, _, [spec]}, variable, die) do
+  def deep_checks({:keyword, _, [spec]}, variable, die) do
     value_guard = Typespec.to_guard(spec, quote do var!(v) end)
     main_check = quote do
       match?({k, var!(v)} when is_atom(k) and unquote(value_guard), var!(head))
@@ -123,14 +118,14 @@ defmodule TypedHeaders.List do
     [check(variable, main_check, term_check, die)]
   end
   # t:keyword/0
-  def iter_checks({:keyword, _, _}, variable, die) do
+  def deep_checks({:keyword, _, _}, variable, die) do
     main_check = quote do
       match?({k, _v} when is_atom(k), var!(head))
     end
     term_check = quote do var!(tail) == [] end
     [check(variable, main_check, term_check, die)]
   end
-  def iter_checks(_, _, _), do: []
+  def deep_checks(_, _, _), do: []
 
 
   def __nonempty_check__(variable, die) do
