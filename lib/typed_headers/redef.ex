@@ -27,13 +27,7 @@ defmodule TypedHeaders.Redef do
     rebuild_code(macro, fn_name, meta, [], retval_type, block)
   end
   def rebuild_code(macro, fn_name, meta, params, retval_type, block) do
-    naked_params = Enum.map(params, &naked_params/1)
-    header = case Enum.flat_map(params, &when_statements/1) do
-      [] ->
-        {fn_name, meta, naked_params}
-      lst when is_list(lst) ->
-        {:when, [context: Elixir], [{fn_name, meta, naked_params}, list_to_ands(lst)]}
-    end
+    header = {fn_name, meta, Enum.map(params, &naked_params/1)}
 
     finalized_block = block
     |> inject_param_checks(Enum.flat_map(params, &param_checks/1))
@@ -48,15 +42,6 @@ defmodule TypedHeaders.Redef do
   defp naked_params(varinfo), do: varinfo
 
   @full_context [context: Elixir, import: Kernel]
-
-  # no terms
-  defp when_statements({@t, _, [_, {no_op, _, _}]}) when no_op in @noops, do: []
-  # general type data forms
-  defp when_statements({@t, _, [variable, typedata]}) do
-    [Typespec.to_guard(typedata, variable)]
-  end
-  # no type signature, generates no content.
-  defp when_statements({_varinfo, _, atom}) when is_atom(atom), do: []
 
   defp param_checks({@t, _, [_variable, {type, _, _}]}) when type in @noops, do: []
   defp param_checks({@t, _, [variable, typespec]}) do
