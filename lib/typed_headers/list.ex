@@ -1,8 +1,10 @@
 defmodule TypedHeaders.List do
   # code generators for checking lists
 
-  def types, do: ~w[list nonempty_list maybe_improper_list nonempty_improper_list nonempty_maybe_improper_list
-    charlist nonempty_charlist keyword]a
+  @types ~w[list nonempty_list maybe_improper_list nonempty_improper_list nonempty_maybe_improper_list
+  charlist nonempty_charlist keyword]a
+
+  def types, do: @types
 
   alias TypedHeaders.Typespec
 
@@ -19,83 +21,104 @@ defmodule TypedHeaders.List do
 
   @spec pre_checks(Macro.t, Macro.t) :: Macro.t
   def pre_checks(t, variable) do
-    deep_checks(t, variable, die(:foo, :pre_check))
+    deep_check(t, variable, die(:foo, :pre_check))
   end
 
   ## DEEP CHECKS
 
+  # guard against functions, which have a funny AST.
+  def deep_checks([{:->, _, _}], _variable, _die), do: []
+  def deep_checks([{:..., _, _}], variable, die) do
+    deep_check({:nonempty_list, @full_context, nil}, variable, die)
+  end
+  def deep_checks([t, {:..., _, _}], variable, die) do
+    deep_check({:nonempty_list, @full_context, [t]}, variable, die)
+  end
+  def deep_checks(spec = [{atom, _} | _], variable, die) when is_atom(atom) do
+    deep_check(spec, variable, die)
+  end
+  def deep_checks(spec = [_], variable, die) do
+    deep_check({:list, [], spec}, variable, die)
+  end
+  def deep_checks(spec = {list_type, _, _}, variable, die)
+      when list_type in @types do
+    deep_check(spec, variable, die)
+  end
+  def deep_checks(_, _, _), do: []
+
+
   # t:list/1
-  def deep_checks({:list, _, [typedata]}, variable, die) do
+  def deep_check({:list, _, [typedata]}, variable, die) do
     main_check = Typespec.to_guard(typedata, quote do var!(head) end)
     term_check = quote do var!(tail) == [] end
     [check(variable, main_check, term_check, die)]
   end
   # t:list/0
-  def deep_checks({:list, _, _}, variable, die) do
+  def deep_check({:list, _, _}, variable, die) do
     [list_check(variable, die)]
   end
   # t:nonempty_list/1
-  def deep_checks({:nonempty_list, _, [typedata]}, variable, die) do
+  def deep_check({:nonempty_list, _, [typedata]}, variable, die) do
     main_check = Typespec.to_guard(typedata, quote do var!(head) end)
     term_check = quote do var!(tail) == [] end
     [check(variable, main_check, term_check, die, nonempty: true)]
   end
   # t:nonempty_list/0
-  def deep_checks({:nonempty_list, _, _}, variable, die) do
+  def deep_check({:nonempty_list, _, _}, variable, die) do
     main_check = true
     term_check = quote do var!(tail) == [] end
     [check(variable, main_check, term_check, die, nonempty: true)]
   end
   # t:maybe_improper_list/1
-  def deep_checks({:maybe_improper_list, meta, [typedata]}, variable, die) do
-    deep_checks({:maybe_improper_list, meta, [typedata, typedata]}, variable, die)
+  def deep_check({:maybe_improper_list, meta, [typedata]}, variable, die) do
+    deep_check({:maybe_improper_list, meta, [typedata, typedata]}, variable, die)
   end
   # t:maybe_improper_list/2
-  def deep_checks({:maybe_improper_list, _, [main_type, term_type]}, variable, die) do
+  def deep_check({:maybe_improper_list, _, [main_type, term_type]}, variable, die) do
     main_check = Typespec.to_guard(main_type, quote do var!(head) end)
     term_check = Typespec.to_guard(term_type, quote do var!(tail) end)
 
     [check(variable, main_check, term_check, die)]
   end
   # t:maybe_improper_list/0... anything goes, no need to check any()
-  def deep_checks({:maybe_improper_list, _, _}, _variable, _die), do: []
+  def deep_check({:maybe_improper_list, _, _}, _variable, _die), do: []
   # t:nonempty_improper_list/1
-  def deep_checks({:nonempty_improper_list, meta, [typedata]}, variable, die) do
-    deep_checks({:nonempty_improper_list, meta, [typedata, typedata]}, variable, die)
+  def deep_check({:nonempty_improper_list, meta, [typedata]}, variable, die) do
+    deep_check({:nonempty_improper_list, meta, [typedata, typedata]}, variable, die)
   end
   # t:nonempty_improper_list/2
-  def deep_checks({:nonempty_improper_list, _, [main_type, term_type]}, variable, die) do
+  def deep_check({:nonempty_improper_list, _, [main_type, term_type]}, variable, die) do
     main_check = Typespec.to_guard(main_type, quote do var!(head) end)
     term_check = Typespec.to_guard(term_type, quote do var!(tail) end)
 
     [check(variable, main_check, term_check, die, nonempty: true, improper: true)]
   end
   # t:nonempty_improper_list/0
-  def deep_checks({:nonempty_improper_list, _, _}, variable, die) do
+  def deep_check({:nonempty_improper_list, _, _}, variable, die) do
     [__nonempty_check__(variable, die)]
   end
   # t:nonempty_maybe_improper_list/1
-  def deep_checks({:nonempty_maybe_improper_list, meta, [main_type]}, variable, die) do
-    deep_checks({:nonempty_maybe_improper_list, meta, [main_type, main_type]}, variable, die)
+  def deep_check({:nonempty_maybe_improper_list, meta, [main_type]}, variable, die) do
+    deep_check({:nonempty_maybe_improper_list, meta, [main_type, main_type]}, variable, die)
   end
   # t:nonempty_maybe_improper_list/2
-  def deep_checks({:nonempty_maybe_improper_list, _, [main_type, term_type]}, variable, die) do
+  def deep_check({:nonempty_maybe_improper_list, _, [main_type, term_type]}, variable, die) do
     main_check = Typespec.to_guard(main_type, quote do var!(head) end)
     term_check = Typespec.to_guard(term_type, quote do var!(tail) end)
 
     [check(variable, main_check, term_check, die, nonempty: true)]
   end
   # t:nonempty_maybe_improper_list/0
-  def deep_checks({:nonempty_maybe_improper_list, _, _}, variable, die) do
+  def deep_check({:nonempty_maybe_improper_list, _, _}, variable, die) do
     [__nonempty_check__(variable, die)]
   end
-  def deep_checks({:charlist, meta, _}, variable, die) do
-    deep_checks({:list, meta, [{:char, meta, nil}]}, variable, die)
+  def deep_check({:charlist, meta, _}, variable, die) do
+    deep_check({:list, meta, [{:char, meta, nil}]}, variable, die)
   end
-  def deep_checks({:nonempty_charlist, meta, _}, variable, die) do
-    deep_checks({:nonempty_list, meta, [{:char, meta, nil}]}, variable, die)
+  def deep_check({:nonempty_charlist, meta, _}, variable, die) do
+    deep_check({:nonempty_list, meta, [{:char, meta, nil}]}, variable, die)
   end
-  def deep_checks(kwl = [{atom, _} | _], variable, die) when is_atom(atom) do
+  def deep_check(kwl = [{atom, _} | _], variable, die) when is_atom(atom) do
     Enum.map(kwl, fn {key, spec} ->
       guard = Typespec.to_guard(spec, quote do var!(value) end)
       quote do
@@ -109,7 +132,7 @@ defmodule TypedHeaders.List do
     end)
   end
   # t:keyword/1
-  def deep_checks({:keyword, _, [spec]}, variable, die) do
+  def deep_check({:keyword, _, [spec]}, variable, die) do
     value_guard = Typespec.to_guard(spec, quote do var!(v) end)
     main_check = quote do
       match?({k, var!(v)} when is_atom(k) and unquote(value_guard), var!(head))
@@ -118,14 +141,14 @@ defmodule TypedHeaders.List do
     [check(variable, main_check, term_check, die)]
   end
   # t:keyword/0
-  def deep_checks({:keyword, _, _}, variable, die) do
+  def deep_check({:keyword, _, _}, variable, die) do
     main_check = quote do
       match?({k, _v} when is_atom(k), var!(head))
     end
     term_check = quote do var!(tail) == [] end
     [check(variable, main_check, term_check, die)]
   end
-  def deep_checks(_, _, _), do: []
+  def deep_check(_, _, _), do: []
 
 
   def __nonempty_check__(variable, die) do

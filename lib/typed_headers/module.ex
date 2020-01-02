@@ -55,4 +55,5 @@ defmodule TypedHeaders.Module do
       end
     end]
   end
+  def deep_checks(_, _, _), do: []
 end

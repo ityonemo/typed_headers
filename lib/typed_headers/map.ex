@@ -119,5 +119,6 @@ defmodule TypedHeaders.Map do
     end] ++ deep_checks(rest, variable, die)
   end
   def deep_checks([_ | rest], variable, die), do: deep_checks(rest, variable, die)
+  def deep_checks(_, _, _), do: []
 
 end

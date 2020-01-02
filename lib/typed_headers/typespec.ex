@@ -126,8 +126,9 @@ defmodule TypedHeaders.Typespec do
   @type lambda :: {:fn, meta::list, block::list(Macro.t)}
   @spec to_lambda(Macro.t, Macro.t) :: lambda
   def to_lambda(typespec, die) do
-    guard = when_result(typespec)
-    deep_check = to_deep_check(typespec, die)
+    variable = quote do var!(content) end
+    guard = when_result(typespec, variable)
+    deep_check = to_deep_check(typespec, variable, die)
     quote do
       fn
         unquote(guard) ->
@@ -137,36 +138,19 @@ defmodule TypedHeaders.Typespec do
     end
   end
 
-  def when_result(typedata) do
-    content = quote do var!(content) end
-    {:when, [], [content, to_guard(typedata, content)]}
+  def when_result(typedata, variable) do
+    {:when, [], [variable, to_guard(typedata, variable)]}
   end
 
-  def to_deep_check(typedata, die) do
-    variable = quote do var!(content) end
-    deep_checks(typedata, variable, die)
+  @modules [TypedHeaders.List, TypedHeaders.Module, TypedHeaders.Map]
+
+  def to_deep_check(typedata, variable, die) do
+    Enum.flat_map(@modules, fn mod ->
+      mod.deep_checks(typedata, variable, die)
+    end)
   end
 
-  @list_types List.types
   @module_types TypedHeaders.Module.types
-
-  def deep_checks([{:->, _, _}], _, _), do: []
-  def deep_checks([{:..., _, _}], variable, die) do
-    List.deep_checks({:nonempty_list, @full_context, nil}, variable, die)
-  end
-  def deep_checks([t, {:..., _, _}], variable, die) do
-    List.deep_checks({:nonempty_list, @full_context, [t]}, variable, die)
-  end
-  def deep_checks(spec = [{atom, _} | _], variable, die) when is_atom(atom) do
-    List.deep_checks(spec, variable, die)
-  end
-  def deep_checks([typedata], variable, die) do
-    List.deep_checks({:list, [], [typedata]}, variable, die)
-  end
-  def deep_checks(spec = {list_type, _, _}, variable, die)
-      when list_type in @list_types do
-    List.deep_checks(spec, variable, die)
-  end
   def deep_checks(spec = {module_type, _, _}, variable, die)
       when module_type in @module_types do
     TypedHeaders.Module.deep_checks(spec, variable, die)
@@ -175,7 +159,6 @@ defmodule TypedHeaders.Typespec do
     TypedHeaders.Map.deep_checks(spec, variable, die)
   end
   def deep_checks(_, _, _), do: []
-
 
   def typefn(type, variable), do: {@typefn[type], @full_context, [variable]}
 
