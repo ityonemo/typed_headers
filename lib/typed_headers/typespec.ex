@@ -124,9 +124,10 @@ defmodule TypedHeaders.Typespec do
   def to_string({typefn, _, _}), do: "#{typefn}"
 
   @type lambda :: {:fn, meta::list, block::list(Macro.t)}
+
   @spec to_lambda(Macro.t, Macro.t) :: lambda
   def to_lambda(typespec, die) do
-    variable = quote do var!(content) end
+    variable = quote do var!(result) end
     guard = when_result(typespec, variable)
     deep_check = to_deep_check(typespec, variable, die)
     quote do

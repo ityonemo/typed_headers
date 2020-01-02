@@ -35,10 +35,8 @@ defmodule TypedHeaders.Redef do
         {:when, [context: Elixir], [{fn_name, meta, naked_params}, list_to_ands(lst)]}
     end
 
-    pre_statements = Enum.flat_map(params, &pre_statements/1)
-
     finalized_block = block
-    |> inject_prestatements(pre_statements)
+    |> inject_param_checks(Enum.flat_map(params, &param_checks/1))
     |> inject_retval_check(fn_name, retval_type)
 
     quote do
@@ -60,39 +58,24 @@ defmodule TypedHeaders.Redef do
   # no type signature, generates no content.
   defp when_statements({_varinfo, _, atom}) when is_atom(atom), do: []
 
-  @list_types List.types
-  @module_types TypedHeaders.Module.types
+  defp param_checks({@t, _, [_variable, {type, _, _}]}) when type in @noops, do: []
+  defp param_checks({@t, _, [variable, typespec]}) do
+    die = quote do
+      raise FunctionClauseError
+    end
+    lambda = Typespec.to_lambda(typespec, die)
+    [quote do
+      param_check = unquote(lambda)
+      param_check.(unquote(variable))
+    end]
+  end
+  defp param_checks(_), do: []
 
-  # filter functions
-  defp pre_statements({@t, _, [_variable, [{:->, _, _}]]}), do: []
-  defp pre_statements({@t, _, [variable, [{:..., _, _}]]}) do
-    List.pre_checks({:nonempty_list, @full_context, nil}, variable)
+  defp inject_param_checks([do: {:__block__, meta, terms}], checks) do
+    [do: {:__block__, meta, checks ++ terms}]
   end
-  defp pre_statements({@t, _, [variable, [type, {:..., _, _}]]}) do
-    List.pre_checks({:nonempty_list, @full_context, [type]}, variable)
-  end
-  defp pre_statements({@t, _, [variable, spec = [{atom, _} | _]]}) when is_atom(atom) do
-    List.pre_checks(spec, variable)
-  end
-  defp pre_statements({@t, _, [variable, [spec]]}) do
-    List.pre_checks({:list, @full_context, [spec]}, variable)
-  end
-  defp pre_statements({@t, _, [variable, spec = {type, _, _}]}) when type in @list_types do
-    List.pre_checks(spec, variable)
-  end
-  defp pre_statements({@t, _, [variable, spec = {type, _, _}]}) when type in @module_types do
-    TypedHeaders.Module.pre_checks(spec, variable)
-  end
-  defp pre_statements({@t, _, [variable, {:%{}, _, spec}]}) do
-    TypedHeaders.Map.pre_checks(spec, variable)
-  end
-  defp pre_statements(_), do: []
-
-  defp inject_prestatements([do: {:__block__, meta, terms}], prestatements) do
-    [do: {:__block__, meta, prestatements ++ terms}]
-  end
-  defp inject_prestatements([do: term], prestatements) do
-    [do: {:__block__, [], prestatements ++ [term]}]
+  defp inject_param_checks([do: term], checks) do
+    [do: {:__block__, [], checks ++ [term]}]
   end
 
   defp inject_retval_check(block, _fn_name, nil), do: block

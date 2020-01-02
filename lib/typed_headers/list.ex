@@ -24,6 +24,8 @@ defmodule TypedHeaders.List do
     deep_check(t, variable, die(:foo, :pre_check))
   end
 
+  @full_context [context: Elixir, import: Kernel]
+
   ## DEEP CHECKS
 
   # guard against functions, which have a funny AST.
