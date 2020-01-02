@@ -144,8 +144,38 @@ defmodule TypedHeaders.Typespec do
 
   def to_deep_check(typedata) do
     variable = quote do var!(content) end
-    TypedHeaders.Redef.post_checks(typedata, :none, "", variable)
+    post_checks(typedata, :none, "", variable)
   end
+
+  @list_types List.types
+  @module_types TypedHeaders.Module.types
+
+  def post_checks([{:->, _, _}], _, _, _), do: []
+  def post_checks([{:..., _, _}], fn_name, type, value) do
+    List.post_checks({:nonempty_list, @full_context, nil}, fn_name, type, value)
+  end
+  def post_checks([t, {:..., _, _}], fn_name, type, value) do
+    List.post_checks({:nonempty_list, @full_context, [t]}, fn_name, type, value)
+  end
+  def post_checks(spec = [{atom, _} | _], fn_name, type, value) when is_atom(atom) do
+    List.post_checks(spec, fn_name, type, value)
+  end
+  def post_checks([typedata], fn_name, type, value) do
+    List.post_checks({:list, [], [typedata]}, fn_name, type, value)
+  end
+  def post_checks(spec = {list_type, _, _}, fn_name, type, value)
+      when list_type in @list_types do
+    List.post_checks(spec, fn_name, type, value)
+  end
+  def post_checks(spec = {module_type, _, _}, fn_name, type, value)
+      when module_type in @module_types do
+    TypedHeaders.Module.post_checks(spec, fn_name, type, value)
+  end
+  def post_checks(spec = {:%{}, _, _}, fn_name, type, value) do
+    TypedHeaders.Map.post_checks(spec, fn_name, type, value)
+  end
+  def post_checks(_, _, _, _), do: []
+
 
   def typefn(type, variable), do: {@typefn[type], @full_context, [variable]}
 

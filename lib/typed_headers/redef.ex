@@ -95,32 +95,6 @@ defmodule TypedHeaders.Redef do
     [do: {:__block__, [], prestatements ++ [term]}]
   end
 
-  def post_checks([{:->, _, _}], _, _, _), do: []
-  def post_checks([{:..., _, _}], fn_name, type, value) do
-    List.post_checks({:nonempty_list, @full_context, nil}, fn_name, type, value)
-  end
-  def post_checks([t, {:..., _, _}], fn_name, type, value) do
-    List.post_checks({:nonempty_list, @full_context, [t]}, fn_name, type, value)
-  end
-  def post_checks(spec = [{atom, _} | _], fn_name, type, value) when is_atom(atom) do
-    List.post_checks(spec, fn_name, type, value)
-  end
-  def post_checks([typedata], fn_name, type, value) do
-    List.post_checks({:list, [], [typedata]}, fn_name, type, value)
-  end
-  def post_checks(spec = {list_type, _, _}, fn_name, type, value)
-      when list_type in @list_types do
-    List.post_checks(spec, fn_name, type, value)
-  end
-  def post_checks(spec = {module_type, _, _}, fn_name, type, value)
-      when module_type in @module_types do
-    TypedHeaders.Module.post_checks(spec, fn_name, type, value)
-  end
-  def post_checks(spec = {:%{}, _, _}, fn_name, type, value) do
-    TypedHeaders.Map.post_checks(spec, fn_name, type, value)
-  end
-  def post_checks(_, _, _, _), do: []
-
   defp inject_retval_check(block, _fn_name, nil), do: block
   defp inject_retval_check(block, _fn_name, {noop, _, _}) when noop in @noops, do: block
   defp inject_retval_check([do: inner_block], fn_name, typedata) do
