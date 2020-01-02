@@ -39,7 +39,7 @@ defmodule TypedHeaders.Redef do
 
     finalized_block = block
     |> inject_prestatements(pre_statements)
-    |> inject_check(fn_name, retval_type)
+    |> inject_retval_check(fn_name, retval_type)
 
     quote do
       Kernel.unquote(macro)(unquote(header), unquote(finalized_block))
@@ -95,58 +95,47 @@ defmodule TypedHeaders.Redef do
     [do: {:__block__, [], prestatements ++ [term]}]
   end
 
-  defp post_checks([{:->, _, _}], _, _, _), do: []
-  defp post_checks([{:..., _, _}], fn_name, type, value) do
+  def post_checks([{:->, _, _}], _, _, _), do: []
+  def post_checks([{:..., _, _}], fn_name, type, value) do
     List.post_checks({:nonempty_list, @full_context, nil}, fn_name, type, value)
   end
-  defp post_checks([t, {:..., _, _}], fn_name, type, value) do
+  def post_checks([t, {:..., _, _}], fn_name, type, value) do
     List.post_checks({:nonempty_list, @full_context, [t]}, fn_name, type, value)
   end
-  defp post_checks(spec = [{atom, _} | _], fn_name, type, value) when is_atom(atom) do
+  def post_checks(spec = [{atom, _} | _], fn_name, type, value) when is_atom(atom) do
     List.post_checks(spec, fn_name, type, value)
   end
-  defp post_checks([typedata], fn_name, type, value) do
+  def post_checks([typedata], fn_name, type, value) do
     List.post_checks({:list, [], [typedata]}, fn_name, type, value)
   end
-  defp post_checks(spec = {list_type, _, _}, fn_name, type, value)
+  def post_checks(spec = {list_type, _, _}, fn_name, type, value)
       when list_type in @list_types do
     List.post_checks(spec, fn_name, type, value)
   end
-  defp post_checks(spec = {module_type, _, _}, fn_name, type, value)
+  def post_checks(spec = {module_type, _, _}, fn_name, type, value)
       when module_type in @module_types do
     TypedHeaders.Module.post_checks(spec, fn_name, type, value)
   end
-  defp post_checks(spec = {:%{}, _, _}, fn_name, type, value) do
+  def post_checks(spec = {:%{}, _, _}, fn_name, type, value) do
     TypedHeaders.Map.post_checks(spec, fn_name, type, value)
   end
-  defp post_checks(_, _, _, _), do: []
+  def post_checks(_, _, _, _), do: []
 
-  defp inject_check([do: term], _fn_name, nil), do: [do: term]
-  defp inject_check([do: term], _fn_name, {noop, _, _}) when noop in @noops, do: [do: term]
-  defp inject_check([do: term], fn_name, typedata) do
+  defp inject_retval_check(block, _fn_name, nil), do: block
+  defp inject_retval_check(block, _fn_name, {noop, _, _}) when noop in @noops, do: block
+  defp inject_retval_check([do: inner_block], fn_name, typedata) do
     typestr = Typespec.to_string(typedata)
-    inject_check(term,
-      fn_name,
-      typestr,
-      post_checks(typedata, fn_name, typestr, quote do var!(result) end),
-      when_result(typedata))
-  end
-
-  defp inject_check(term, fn_name, type, post_checks, guard) do
-    new_directive = quote do
-      case unquote(term) do
-        unquote(guard) ->
-          unquote_splicing(post_checks)
-          var!(result)
-        value -> raise RuntimeError, message: "function #{unquote(fn_name)} expects type #{unquote(type)}, got #{inspect value}"
-      end
+    die = quote do
+      result_text = inspect(var!(result))
+      raise RuntimeError, message: "function #{unquote(fn_name)} should return #{unquote typestr}, got: #{result_text}"
     end
-    [do: new_directive]
-  end
-
-  defp when_result(typedata) do
-    result = quote do var!(result) end
-    {:when, [], [result, Typespec.to_guard(typedata, result)]}
+    check = Typespec.to_lambda(typedata, die)
+    [do: quote do
+      var!(result) = (unquote(inner_block))
+      retval_lambda = unquote(check)
+      retval_lambda.(var!(result))
+      var!(result)
+    end]
   end
 
   defp list_to_ands([a, b]) do

@@ -125,10 +125,26 @@ defmodule TypedHeaders.Typespec do
 
   @type lambda :: {:fn, meta::list, block::list(Macro.t)}
   @spec to_lambda(Macro.t, Macro.t) :: lambda
-  def to_lambda(_typespec, _die_condition) do
+  def to_lambda(typespec, die) do
+    guard = when_result(typespec)
+    deep_check = to_deep_check(typespec)
     quote do
-      fn -> nil end
+      fn
+        unquote(guard) ->
+          unquote_splicing(deep_check)
+        _ -> unquote(die)
+      end
     end
+  end
+
+  def when_result(typedata) do
+    content = quote do var!(content) end
+    {:when, [], [content, to_guard(typedata, content)]}
+  end
+
+  def to_deep_check(typedata) do
+    variable = quote do var!(content) end
+    TypedHeaders.Redef.post_checks(typedata, :none, "", variable)
   end
 
   def typefn(type, variable), do: {@typefn[type], @full_context, [variable]}
