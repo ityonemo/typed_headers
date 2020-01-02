@@ -83,6 +83,9 @@ defmodule TypedHeaders.Redef do
   defp pre_statements({@t, _, [variable, spec = {type, _, _}]}) when type in @module_types do
     TypedHeaders.Module.pre_checks(spec, variable)
   end
+  defp pre_statements({@t, _, [variable, {:%{}, _, spec}]}) do
+    TypedHeaders.Map.pre_checks(spec, variable)
+  end
   defp pre_statements(_), do: []
 
   defp inject_prestatements([do: {:__block__, meta, terms}], prestatements) do
@@ -112,6 +115,9 @@ defmodule TypedHeaders.Redef do
   defp post_checks(spec = {module_type, _, _}, fn_name, type, value)
       when module_type in @module_types do
     TypedHeaders.Module.post_checks(spec, fn_name, type, value)
+  end
+  defp post_checks(spec = {:%{}, _, _}, fn_name, type, value) do
+    TypedHeaders.Map.post_checks(spec, fn_name, type, value)
   end
   defp post_checks(_, _, _, _), do: []
 

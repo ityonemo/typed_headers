@@ -17,6 +17,7 @@ defmodule TypedHeaders.List do
     end
   end
 
+  @spec pre_checks(Macro.t, Macro.t) :: Macro.t
   def pre_checks(t, variable) do
     iter_checks(t, variable, die(:foo, :pre_check))
   end

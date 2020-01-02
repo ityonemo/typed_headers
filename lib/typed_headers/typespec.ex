@@ -123,6 +123,14 @@ defmodule TypedHeaders.Typespec do
   def to_string(int) when is_integer(int), do: "#{int}"
   def to_string({typefn, _, _}), do: "#{typefn}"
 
+  @type lambda :: {:fn, meta::list, block::list(Macro.t)}
+  @spec to_lambda(Macro.t, Macro.t) :: lambda
+  def to_lambda(_typespec, _die_condition) do
+    quote do
+      fn -> nil end
+    end
+  end
+
   def typefn(type, variable), do: {@typefn[type], @full_context, [variable]}
 
   def and_fn(a, b), do: {:and, @full_context, [a, b]}
