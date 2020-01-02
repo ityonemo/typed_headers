@@ -22,11 +22,11 @@ defmodule TypedHeaders.Redef do
     rebuild_code(:def, fn_name, meta, params, nil, block)
   end
 
-  # substitute [] for nil, for zero-arity functions without params parens
-  def rebuild_code(macro, fn_name, meta, nil, retval_type, block) do
+  @spec rebuild_code(:def | :defp, atom, list,  nil | [Macro.t], Macro.t, Macro.t) :: Macro.t
+  defp rebuild_code(macro, fn_name, meta, nil, retval_type, block) do
     rebuild_code(macro, fn_name, meta, [], retval_type, block)
   end
-  def rebuild_code(macro, fn_name, meta, params, retval_type, block) do
+  defp rebuild_code(macro, fn_name, meta, params, retval_type, block) do
     header = {fn_name, meta, Enum.map(params, &naked_params/1)}
 
     finalized_block = block
@@ -38,6 +38,7 @@ defmodule TypedHeaders.Redef do
     end
   end
 
+  @spec naked_params(Macro.t) :: Macro.t
   defp naked_params({@t, _, [varinfo, _typeinfo]}), do: varinfo
   defp naked_params(varinfo), do: varinfo
 
