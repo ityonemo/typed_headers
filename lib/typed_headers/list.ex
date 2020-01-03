@@ -8,22 +8,6 @@ defmodule TypedHeaders.List do
 
   alias TypedHeaders.Typespec
 
-  defp die(fn_name, type, value, :post_check) do
-    quote do
-      raise RuntimeError, message: "function #{unquote(fn_name)} expects type #{unquote(type)}, got #{inspect unquote(value)}"
-    end
-  end
-  defp die(_func, :pre_check) do
-    quote do
-      raise FunctionClauseError
-    end
-  end
-
-  @spec pre_checks(Macro.t, Macro.t) :: Macro.t
-  def pre_checks(t, variable) do
-    deep_check(t, variable, die(:foo, :pre_check))
-  end
-
   @full_context [context: Elixir, import: Kernel]
 
   ## DEEP CHECKS

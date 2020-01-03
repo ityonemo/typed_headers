@@ -60,39 +60,30 @@ defmodule TypedHeaders.Map do
     Typespec.and_fn(hd, combine_guard_list(tl))
   end
 
-  defp die(fn_name, type, value, :post_check) do
-    quote do
-      raise RuntimeError, message: "function #{unquote(fn_name)} expects type #{unquote(type)}, got #{inspect unquote(value)}"
-    end
-  end
-  defp die(_func, :pre_check) do
-    quote do
-      raise FunctionClauseError
-    end
-  end
-
-  @spec pre_checks(Macro.t, Macro.t) :: Macro.t
-  def pre_checks(t, variable) do
-    deep_checks(t, variable, die(:foo, :pre_check))
-  end
-
   defguard is_literal(type) when is_atom(type) or is_integer(type) or type == []
   defguard is_empty_literal(atom) when atom in [:<<>>, :{}, :%{}]
 
   def deep_checks({:%{}, _, list}, variable, die) do
-    deep_checks(list, variable, die)
+    deep_check(list, variable, die)
   end
+  def deep_checks({:%, _, [module, {:%{}, _, spec}]}, variable, die) do
+    [
+      check_struct_existence(module, die),
+      check_struct_fields(module, variable, die),
+    ] ++ deep_check(spec, variable, die)
+  end
+  def deep_checks(_, _, _), do: []
 
-  def deep_checks([], _variable, _die), do: []
-  def deep_checks([{{:required, _, [key_type]}, _val_type} | rest], variable, die) when is_literal(key_type) do
-    deep_checks(rest, variable, die)
+  def deep_check([], _variable, _die), do: []
+  def deep_check([{{:required, _, [key_type]}, _val_type} | rest], variable, die) when is_literal(key_type) do
+    deep_check(rest, variable, die)
     # TODO: do deep checking when necessary
   end
-  def deep_checks([{{:required, _, [{atom, _, _}]}, _val_type} | rest], variable, die) when is_empty_literal(atom) do
-    deep_checks(rest, variable, die)
+  def deep_check([{{:required, _, [{atom, _, _}]}, _val_type} | rest], variable, die) when is_empty_literal(atom) do
+    deep_check(rest, variable, die)
     # TODO: do deep checking when necessary
   end
-  def deep_checks([{{:required, meta, [key_type]}, val_type} | rest], variable, die) do
+  def deep_check([{{:required, meta, [key_type]}, val_type} | rest], variable, die) do
     key_match = Typespec.to_guard(key_type, quote do var!(key) end)
     [quote do
       # make sure that at least one key exists matching the typespec.
@@ -102,9 +93,9 @@ defmodule TypedHeaders.Map do
         unquote(key_match)
       end) || unquote(die)
       # TODO: deep checking on the interior type.
-    end] ++ deep_checks([{{:optional, meta, [key_type]}, val_type} | rest], variable, die)
+    end] ++ deep_check([{{:optional, meta, [key_type]}, val_type} | rest], variable, die)
   end
-  def deep_checks([{{:optional, _, [key_type]}, val_type} | rest], variable, die) do
+  def deep_check([{{:optional, _, [key_type]}, val_type} | rest], variable, die) do
     key_match = Typespec.to_guard(key_type, quote do var!(key) end)
     val_match = Typespec.to_guard(val_type, quote do var!(val) end)
     [quote do
@@ -116,9 +107,22 @@ defmodule TypedHeaders.Map do
       |> Enum.all?(fn {_, var!(val)} ->
         unquote(val_match)
       end) || unquote(die)
-    end] ++ deep_checks(rest, variable, die)
+    end] ++ deep_check(rest, variable, die)
   end
-  def deep_checks([_ | rest], variable, die), do: deep_checks(rest, variable, die)
-  def deep_checks(_, _, _), do: []
+  def deep_check([_ | rest], variable, die), do: deep_check(rest, variable, die)
+  def deep_check(_, _, _), do: []
 
+  # struct helpers
+
+  defp check_struct_existence(module, die) do
+    quote do
+      unless function_exported?(unquote(module), :__struct__, 0), do: unquote(die)
+    end
+  end
+
+  defp check_struct_fields(module, variable, die) do
+    quote do
+      unless Map.keys(unquote(module).__struct__) == Map.keys(unquote(variable)), do: unquote(die)
+    end
+  end
 end

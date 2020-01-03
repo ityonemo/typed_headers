@@ -4,42 +4,62 @@ defmodule TypedHeaders.Redef do
   @noops [:any, :term]
 
   alias TypedHeaders.Typespec
-  alias TypedHeaders.List
 
   defmacro defp({@t, _, [{fn_name, meta, params}, retval_type]}, block) do
-    rebuild_code(:def, __CALLER__.module, fn_name, meta, params, retval_type, block)
+    rebuild_code(:def, __CALLER__, fn_name, meta, params, retval_type, block)
   end
 
   defmacro defp({fn_name, meta, params}, block) do
-    rebuild_code(:def, __CALLER__.module, fn_name, meta, params, nil, block)
+    rebuild_code(:def, __CALLER__, fn_name, meta, params, nil, block)
   end
 
   defmacro def({@t, _, [{fn_name, meta, params}, retval_type]}, block) do
-    rebuild_code(:def, __CALLER__.module, fn_name, meta, params, retval_type, block)
+    rebuild_code(:def, __CALLER__, fn_name, meta, params, retval_type, block)
   end
 
   defmacro def({fn_name, meta, params}, block) do
-    rebuild_code(:def, __CALLER__.module, fn_name, meta, params, nil, block)
+    rebuild_code(:def, __CALLER__, fn_name, meta, params, nil, block)
   end
 
-  @spec rebuild_code(:def | :defp, module, atom, list,  nil | [Macro.t], Macro.t, Macro.t) :: Macro.t
-  defp rebuild_code(macro, module, fn_name, meta, nil, retval_type, block) do
-    rebuild_code(macro, module, fn_name, meta, [], retval_type, block)
+  @spec rebuild_code(:def | :defp, Macro.Env.t, atom, list,  nil | [Macro.t], Macro.t, Macro.t) :: Macro.t
+  defp rebuild_code(macro, caller, fn_name, meta, nil, retval_type, block) do
+    rebuild_code(macro, caller, fn_name, meta, [], retval_type, block)
   end
-  defp rebuild_code(macro, module, fn_name, meta, params, retval_type, block) do
+  defp rebuild_code(macro, caller, fn_name, meta, params, retval_type, block) do
     header = {fn_name, meta, Enum.map(params, &naked_params/1)}
 
-    #defexception [:module, :function, :arity, :kind, :args, :clauses]
-    desc = %{module: module, function: fn_name, arity: length(params)}
+    desc = %{module: caller.module, function: fn_name, arity: length(params)}
+
+    parameter_checks = params
+    |> Enum.map(&resolve_structs(&1, caller.aliases))
+    |> Enum.flat_map(&param_checks(&1, desc))
 
     finalized_block = block
-    |> inject_param_checks(Enum.flat_map(params, &param_checks(&1, desc)))
+    |> inject_param_checks(parameter_checks)
     |> inject_retval_check(fn_name, retval_type)
 
     quote do
       Kernel.unquote(macro)(unquote(header), unquote(finalized_block))
     end
   end
+
+  defp resolve_structs({@t, meta1, [variable, {:%, meta2, [{:__aliases__, _, [struct_alias]}, struct_content]}]}, aliases) do
+    module = aliases
+    |> Enum.flat_map(fn
+      {context_alias, context_module} ->
+        if (context_alias |> Module.split |> List.last) == Atom.to_string(struct_alias) do
+          [context_module]
+        else
+          []
+        end
+    end)
+    |> case do
+      [] -> Module.concat(:Elixir, struct_alias)
+      [module] -> module
+    end
+    {@t, meta1, [variable, {:%, meta2, [module, struct_content]}]}
+  end
+  defp resolve_structs(other, _), do: other
 
   @spec naked_params(Macro.t) :: Macro.t
   defp naked_params({@t, _, [varinfo, _typeinfo]}), do: varinfo
