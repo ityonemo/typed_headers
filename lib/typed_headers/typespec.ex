@@ -60,6 +60,11 @@ defmodule TypedHeaders.Typespec do
   def to_guard([_ | _], variable) do
     typefn(:list, variable)
   end
+  def to_guard({:iodata, _, _}, variable) do
+    or_fn(
+      typefn(:list, variable),
+      typefn(:binary, variable))
+  end
   def to_guard({:<<>>, _, spec}, variable) when length(spec) > 0 do
     Bitstring.descriptor_to_guard(spec, variable)
   end

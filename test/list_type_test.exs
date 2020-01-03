@@ -623,4 +623,112 @@ defmodule TypedHeadersTest.ListTypeTest do
       end
     end
   end
+
+  def iolist_header(value :: iolist) do
+    value
+  end
+  def iolist_retval(value) :: iolist do
+    value
+  end
+
+  describe "iolist typechecking works" do
+    test "in the header" do
+      assert 'foo' == iolist_header('foo')
+      assert ["foo"] == iolist_header(["foo"])
+      assert ["foo", 'bar'] == iolist_header(["foo", 'bar'])
+      assert ["foo" | "bar"] == iolist_header(["foo" | "bar"])
+      assert ["foo", 'bar' | "baz"] == iolist_header(["foo", 'bar' | "baz"])
+
+      assert_raise FunctionClauseError, fn ->
+        iolist_header(:foo)
+      end
+      assert_raise FunctionClauseError, fn ->
+        iolist_header("foo")
+      end
+      assert_raise FunctionClauseError, fn ->
+        iolist_header(["foo", :bar])
+      end
+      assert_raise FunctionClauseError, fn ->
+        iolist_header(["foo", [:bar]])
+      end
+      assert_raise FunctionClauseError, fn ->
+        iolist_header(["foo", 'bar' | :baz])
+      end
+    end
+    test "in the retval" do
+      assert 'foo' == iolist_retval('foo')
+      assert ["foo"] == iolist_retval(["foo"])
+      assert ["foo", 'bar'] == iolist_retval(["foo", 'bar'])
+      assert ["foo" | "bar"] == iolist_retval(["foo" | "bar"])
+      assert ["foo", 'bar' | "baz"] == iolist_retval(["foo", 'bar' | "baz"])
+
+      assert_raise RuntimeError, fn ->
+        iolist_retval(:foo)
+      end
+      assert_raise RuntimeError, fn ->
+        iolist_retval("foo")
+      end
+      assert_raise RuntimeError, fn ->
+        iolist_retval(["foo", :bar])
+      end
+      assert_raise RuntimeError, fn ->
+        iolist_retval(["foo", [:bar]])
+      end
+      assert_raise RuntimeError, fn ->
+        iolist_retval(["foo", 'bar' | :baz])
+      end
+    end
+  end
+
+  def iodata_header(value :: iodata) do
+    value
+  end
+  def iodata_retval(value) :: iodata do
+    value
+  end
+
+  describe "iodata typechecking works" do
+    test "in the header" do
+      assert 'foo' == iodata_header('foo')
+      assert "foo" == iodata_header("foo")
+      assert ["foo"] == iodata_header(["foo"])
+      assert ["foo", 'bar'] == iodata_header(["foo", 'bar'])
+      assert ["foo" | "bar"] == iodata_header(["foo" | "bar"])
+      assert ["foo", 'bar' | "baz"] == iodata_header(["foo", 'bar' | "baz"])
+
+      assert_raise FunctionClauseError, fn ->
+        iodata_header(:foo)
+      end
+      assert_raise FunctionClauseError, fn ->
+        iodata_header(["foo", :bar])
+      end
+      assert_raise FunctionClauseError, fn ->
+        iodata_header(["foo", [:bar]])
+      end
+      assert_raise FunctionClauseError, fn ->
+        iodata_header(["foo", 'bar' | :baz])
+      end
+    end
+    test "in the retval" do
+      assert 'foo' == iodata_retval('foo')
+      assert "foo" == iodata_retval("foo")
+      assert ["foo"] == iodata_retval(["foo"])
+      assert ["foo", 'bar'] == iodata_retval(["foo", 'bar'])
+      assert ["foo" | "bar"] == iodata_retval(["foo" | "bar"])
+      assert ["foo", 'bar' | "baz"] == iodata_retval(["foo", 'bar' | "baz"])
+
+      assert_raise RuntimeError, fn ->
+        iodata_retval(:foo)
+      end
+      assert_raise RuntimeError, fn ->
+        iodata_retval(["foo", :bar])
+      end
+      assert_raise RuntimeError, fn ->
+        iodata_retval(["foo", [:bar]])
+      end
+      assert_raise RuntimeError, fn ->
+        iodata_retval(["foo", 'bar' | :baz])
+      end
+    end
+  end
 end

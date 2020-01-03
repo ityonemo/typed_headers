@@ -2,7 +2,7 @@ defmodule TypedHeaders.List do
   # code generators for checking lists
 
   @types ~w[list nonempty_list maybe_improper_list nonempty_improper_list nonempty_maybe_improper_list
-  charlist nonempty_charlist keyword]a
+  charlist nonempty_charlist keyword iolist iodata]a
 
   def types, do: @types
 
@@ -80,7 +80,7 @@ defmodule TypedHeaders.List do
   end
   # t:nonempty_improper_list/0
   def deep_check({:nonempty_improper_list, _, _}, variable, die) do
-    [__nonempty_check__(variable, die)]
+    [nonempty_check(variable, die)]
   end
   # t:nonempty_maybe_improper_list/1
   def deep_check({:nonempty_maybe_improper_list, meta, [main_type]}, variable, die) do
@@ -95,7 +95,7 @@ defmodule TypedHeaders.List do
   end
   # t:nonempty_maybe_improper_list/0
   def deep_check({:nonempty_maybe_improper_list, _, _}, variable, die) do
-    [__nonempty_check__(variable, die)]
+    [nonempty_check(variable, die)]
   end
   def deep_check({:charlist, meta, _}, variable, die) do
     deep_check({:list, meta, [{:char, meta, nil}]}, variable, die)
@@ -133,10 +133,26 @@ defmodule TypedHeaders.List do
     term_check = quote do var!(tail) == [] end
     [check(variable, main_check, term_check, die)]
   end
+  # t:iolist/0
+  def deep_check({io, _, _}, variable, die) when io in [:iolist, :iodata] do
+    [quote do
+      recursion_fn = fn
+        _this, [] -> nil
+        this, [a | b] ->
+          this.(this, a)
+          this.(this, b)
+        _this, binary when is_binary(binary) -> nil
+        _this, char when is_integer(char) and 0 <= char and char <= 0x10FFF -> nil
+        _this, var!(result) ->
+          unquote(die)
+      end
+      recursion_fn.(recursion_fn, unquote(variable))
+    end]
+  end
   def deep_check(_, _, _), do: []
 
 
-  def __nonempty_check__(variable, die) do
+  def nonempty_check(variable, die) do
     quote do
       match?([_ | _], unquote(variable)) || raise unquote(die)
     end
@@ -144,7 +160,7 @@ defmodule TypedHeaders.List do
 
   def check(variable, main_check, term_check, die, opts \\ []) do
     # generates a check if we need the checked variable to be nonempty.
-    nonempty_check = if opts[:nonempty], do: __nonempty_check__(variable, die)
+    nonempty_check = if opts[:nonempty], do: nonempty_check(variable, die)
 
     # generates a check against the final [] if we are
     eol_check = if opts[:improper], do: die
