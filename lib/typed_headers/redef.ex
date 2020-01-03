@@ -72,6 +72,9 @@ defmodule TypedHeaders.Redef do
   defp naked_params(varinfo), do: varinfo
 
   defp param_checks({@t, _, [_variable, {type, _, _}]}, _) when type in @noops, do: []
+  defp param_checks({@t, meta, [variable, {:as_boolean, _, [spec]}]}, desc) do
+    param_checks({@t, meta, [variable, spec]}, desc)
+  end
   defp param_checks({@t, _, [variable, typespec]}, desc) do
     die = quote do
       raise FunctionClauseError,
@@ -93,6 +96,9 @@ defmodule TypedHeaders.Redef do
 
   defp inject_retval_check(block, _fn_name, nil), do: block
   defp inject_retval_check(block, _fn_name, {noop, _, _}) when noop in @noops, do: block
+  defp inject_retval_check(block, fn_name, {:as_boolean, _, [spec]}) do
+    inject_retval_check(block, fn_name, spec)
+  end
   defp inject_retval_check([do: inner_block], fn_name, typedata) do
     typestr = Typespec.to_string(typedata)
     die = quote do
