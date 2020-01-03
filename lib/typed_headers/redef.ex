@@ -80,7 +80,7 @@ defmodule TypedHeaders.Redef do
         arity: unquote(desc.arity)
       inspect var!(result) # never called, used to suppress warnings
     end
-    [Typespec.to_lambda(typespec, variable, die)]
+    [Typespec.to_case(typespec, variable, die)]
   end
   defp param_checks(_, _), do: []
 
@@ -99,6 +99,6 @@ defmodule TypedHeaders.Redef do
       result_text = inspect(var!(result))
       raise RuntimeError, message: "function #{unquote(fn_name)} should return #{unquote typestr}, got: #{result_text}"
     end
-    [do: Typespec.to_lambda(typedata, inner_block, die)]
+    [do: Typespec.to_case(typedata, inner_block, die)]
   end
 end

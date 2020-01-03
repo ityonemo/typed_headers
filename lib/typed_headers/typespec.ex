@@ -148,8 +148,8 @@ defmodule TypedHeaders.Typespec do
 
   #@type lambda :: {:fn, meta::list, block::list(Macro.t)}
 
-  @spec to_lambda(Macro.t, Macro.t, Macro.t) :: Macro.t
-  def to_lambda(typespec, input, die) do
+  @spec to_case(Macro.t, Macro.t, Macro.t) :: Macro.t
+  def to_case(typespec, input, die) do
     variable = quote do var!(result) end
     guard = when_result(typespec, variable)
     deep_check = to_deep_check(typespec, variable, die)
