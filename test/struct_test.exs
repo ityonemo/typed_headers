@@ -74,4 +74,45 @@ defmodule TypedHeadersTest.StructTest do
       typed_struct_retval(%TestStruct{})
     end
   end
+
+  def untyped_struct_header(value :: struct) do
+    value
+  end
+  def untyped_struct_retval(value) :: struct do
+    value
+  end
+
+  test "untyped struct header" do
+    assert %TestStruct{} == untyped_struct_header(%TestStruct{})
+    assert %OtherStruct{} == untyped_struct_header(%OtherStruct{})
+    # module doesn't have __struct__
+    assert_raise FunctionClauseError, fn ->
+      untyped_struct_header(%{__struct__: List})
+    end
+    # fake struct, extra value
+    assert_raise FunctionClauseError, fn ->
+      untyped_struct_header(%{__struct__: TestStruct, foo: :bar, baz: :quux})
+    end
+    # fake struct, deficient value
+    assert_raise FunctionClauseError, fn ->
+      untyped_struct_header(%{__struct__: TestStruct})
+    end
+  end
+
+  test "untyped struct retval" do
+    assert %TestStruct{} == untyped_struct_retval(%TestStruct{})
+    assert %OtherStruct{} == untyped_struct_retval(%OtherStruct{})
+    # module doesn't have __struct__
+    assert_raise RuntimeError, fn ->
+      untyped_struct_retval(%{__struct__: List})
+    end
+    # fake struct, extra value
+    assert_raise RuntimeError, fn ->
+      untyped_struct_retval(%{__struct__: TestStruct, foo: :bar, baz: :quux})
+    end
+    # fake struct, deficient value
+    assert_raise RuntimeError, fn ->
+      untyped_struct_retval(%{__struct__: TestStruct})
+    end
+  end
 end

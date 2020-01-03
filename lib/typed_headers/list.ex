@@ -32,7 +32,6 @@ defmodule TypedHeaders.List do
   end
   def deep_checks(_, _, _), do: []
 
-
   # t:list/1
   def deep_check({:list, _, [typedata]}, variable, die) do
     main_check = Typespec.to_guard(typedata, quote do var!(head) end)

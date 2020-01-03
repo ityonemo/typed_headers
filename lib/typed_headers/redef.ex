@@ -34,16 +34,22 @@ defmodule TypedHeaders.Redef do
     |> Enum.map(&resolve_structs(&1, caller.aliases))
     |> Enum.flat_map(&param_checks(&1, desc))
 
+    resolved_retval_type = resolve_structs(retval_type, caller.aliases)
+
     finalized_block = block
     |> inject_param_checks(parameter_checks)
-    |> inject_retval_check(fn_name, retval_type)
+    |> inject_retval_check(fn_name, resolved_retval_type)
 
     quote do
       Kernel.unquote(macro)(unquote(header), unquote(finalized_block))
     end
   end
 
-  defp resolve_structs({@t, meta1, [variable, {:%, meta2, [{:__aliases__, _, [struct_alias]}, struct_content]}]}, aliases) do
+  defp resolve_structs({@t, meta, [variable, struct_ast]}, aliases) do
+    resolved_struct_ast = resolve_structs(struct_ast, aliases)
+    {@t, meta, [variable, resolved_struct_ast]}
+  end
+  defp resolve_structs({:%, meta, [{:__aliases__, _, [struct_alias]}, struct_content]}, aliases) do
     module = aliases
     |> Enum.flat_map(fn
       {context_alias, context_module} ->
@@ -57,7 +63,7 @@ defmodule TypedHeaders.Redef do
       [] -> Module.concat(:Elixir, struct_alias)
       [module] -> module
     end
-    {@t, meta1, [variable, {:%, meta2, [module, struct_content]}]}
+    {:%, meta, [module, struct_content]}
   end
   defp resolve_structs(other, _), do: other
 
