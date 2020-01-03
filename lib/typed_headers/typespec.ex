@@ -82,6 +82,13 @@ defmodule TypedHeaders.Typespec do
         end),
       TypedHeaders.Map.descriptor_to_guard(spec, variable))
   end
+  def to_guard({:struct, _, _}, variable) do
+    and_fn(
+      typefn(:map, variable),
+      quote do
+        is_atom(:erlang.map_get(:__struct__, unquote(variable)))
+      end)
+  end
   def to_guard(literal, variable) when is_integer(literal) or is_atom(literal) or (literal == []) do
     {:===, @full_context, [variable, literal]}
   end

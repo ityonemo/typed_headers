@@ -72,6 +72,12 @@ defmodule TypedHeaders.Map do
       check_struct_fields(module, variable, die),
     ] ++ deep_check(spec, variable, die)
   end
+  def deep_checks({:struct, _, _}, variable, die) do
+    [
+      check_struct_existence(variable, die),
+      check_struct_fields(variable, variable, die),
+    ]
+  end
   def deep_checks(_, _, _), do: []
 
   def deep_check([], _variable, _die), do: []
@@ -114,15 +120,25 @@ defmodule TypedHeaders.Map do
 
   # struct helpers
 
-  defp check_struct_existence(module, die) do
+  defp check_struct_existence(variable_or_module, die) do
+    module = normalize(variable_or_module)
     quote do
       unless function_exported?(unquote(module), :__struct__, 0), do: unquote(die)
     end
   end
 
-  defp check_struct_fields(module, variable, die) do
+  defp check_struct_fields(variable_or_module, variable, die) do
+    module = normalize(variable_or_module)
     quote do
       unless Map.keys(unquote(module).__struct__) == Map.keys(unquote(variable)), do: unquote(die)
     end
   end
+
+  defp normalize(module) when is_atom(module), do: module
+  defp normalize(variable) do
+    quote do
+      Map.get(unquote(variable), :__struct__)
+    end
+  end
+
 end
