@@ -66,6 +66,22 @@ defmodule TypedHeaders.Typespec do
   def to_guard({:%{}, _, spec}, variable) do
     TypedHeaders.Map.descriptor_to_guard(spec, variable)
   end
+  def to_guard({:%, _, [module, {:%{}, _, []}]}, variable) do
+    and_fn(
+      typefn(:map, variable),
+      quote do
+        :erlang.map_get(:__struct__, unquote(variable)) == unquote(module)
+      end)
+  end
+  def to_guard({:%, _, [module, {:%{}, _, spec}]}, variable) do
+    and_fn(
+      and_fn(
+        typefn(:map, variable),
+        quote do
+          :erlang.map_get(:__struct__, unquote(variable)) == unquote(module)
+        end),
+      TypedHeaders.Map.descriptor_to_guard(spec, variable))
+  end
   def to_guard(literal, variable) when is_integer(literal) or is_atom(literal) or (literal == []) do
     {:===, @full_context, [variable, literal]}
   end

@@ -172,17 +172,4 @@ defmodule TypedHeadersTest do
       bitstring_header(:not_a_bitsring)
     end
   end
-
-#  test "struct headers" do
-#    alias TypedHeadersTest.EmptyStruct
-#
-#    assert %EmptyStruct{} == struct_header(%EmptyStruct{})
-#    assert_raise FunctionClauseError, fn ->
-#      struct_header(%{not: :astruct})
-#    end
-#    assert_raise FunctionClauseError, fn ->
-#      struct_header(%{__struct__: NotAModule})
-#    end
-#  end
-
 end
