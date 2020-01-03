@@ -146,18 +146,19 @@ defmodule TypedHeaders.Typespec do
   def to_string(int) when is_integer(int), do: "#{int}"
   def to_string({typefn, _, _}), do: "#{typefn}"
 
-  @type lambda :: {:fn, meta::list, block::list(Macro.t)}
+  #@type lambda :: {:fn, meta::list, block::list(Macro.t)}
 
-  @spec to_lambda(Macro.t, Macro.t) :: lambda
-  def to_lambda(typespec, die) do
+  @spec to_lambda(Macro.t, Macro.t, Macro.t) :: Macro.t
+  def to_lambda(typespec, input, die) do
     variable = quote do var!(result) end
     guard = when_result(typespec, variable)
     deep_check = to_deep_check(typespec, variable, die)
     quote do
-      fn
+      case unquote(input) do
         unquote(guard) ->
           unquote_splicing(deep_check)
-        _ -> unquote(die)
+          unquote(variable)
+        var!(result) -> unquote(die)
       end
     end
   end

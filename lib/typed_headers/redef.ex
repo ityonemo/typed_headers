@@ -78,12 +78,9 @@ defmodule TypedHeaders.Redef do
         module: unquote(desc.module),
         function: unquote(desc.function),
         arity: unquote(desc.arity)
+      inspect var!(result) # never called, used to suppress warnings
     end
-    lambda = Typespec.to_lambda(typespec, die)
-    [quote do
-      param_check = unquote(lambda)
-      param_check.(unquote(variable))
-    end]
+    [Typespec.to_lambda(typespec, variable, die)]
   end
   defp param_checks(_, _), do: []
 
@@ -102,12 +99,6 @@ defmodule TypedHeaders.Redef do
       result_text = inspect(var!(result))
       raise RuntimeError, message: "function #{unquote(fn_name)} should return #{unquote typestr}, got: #{result_text}"
     end
-    check = Typespec.to_lambda(typedata, die)
-    [do: quote do
-      var!(result) = (unquote(inner_block))
-      retval_lambda = unquote(check)
-      retval_lambda.(var!(result))
-      var!(result)
-    end]
+    [do: Typespec.to_lambda(typedata, inner_block, die)]
   end
 end
