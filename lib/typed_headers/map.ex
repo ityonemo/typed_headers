@@ -73,31 +73,26 @@ defmodule TypedHeaders.Map do
 
   @spec pre_checks(Macro.t, Macro.t) :: Macro.t
   def pre_checks(t, variable) do
-    iter_checks(t, variable, die(:foo, :pre_check))
-  end
-
-  @spec post_checks(Macro.t, atom, String.t, Macro.t) :: Macro.t
-  def post_checks(t, fn_name, type, variable) do
-    iter_checks(t, variable, die(fn_name, type, variable, :post_check))
+    deep_checks(t, variable, die(:foo, :pre_check))
   end
 
   defguard is_literal(type) when is_atom(type) or is_integer(type) or type == []
   defguard is_empty_literal(atom) when atom in [:<<>>, :{}, :%{}]
 
-  def iter_checks({:%{}, _, list}, variable, die) do
-    iter_checks(list, variable, die)
+  def deep_checks({:%{}, _, list}, variable, die) do
+    deep_checks(list, variable, die)
   end
 
-  def iter_checks([], _variable, _die), do: []
-  def iter_checks([{{:required, _, [key_type]}, _val_type} | rest], variable, die) when is_literal(key_type) do
-    iter_checks(rest, variable, die)
+  def deep_checks([], _variable, _die), do: []
+  def deep_checks([{{:required, _, [key_type]}, _val_type} | rest], variable, die) when is_literal(key_type) do
+    deep_checks(rest, variable, die)
     # TODO: do deep checking when necessary
   end
-  def iter_checks([{{:required, _, [{atom, _, _}]}, _val_type} | rest], variable, die) when is_empty_literal(atom) do
-    iter_checks(rest, variable, die)
+  def deep_checks([{{:required, _, [{atom, _, _}]}, _val_type} | rest], variable, die) when is_empty_literal(atom) do
+    deep_checks(rest, variable, die)
     # TODO: do deep checking when necessary
   end
-  def iter_checks([{{:required, meta, [key_type]}, val_type} | rest], variable, die) do
+  def deep_checks([{{:required, meta, [key_type]}, val_type} | rest], variable, die) do
     key_match = Typespec.to_guard(key_type, quote do var!(key) end)
     [quote do
       # make sure that at least one key exists matching the typespec.
@@ -107,9 +102,9 @@ defmodule TypedHeaders.Map do
         unquote(key_match)
       end) || unquote(die)
       # TODO: deep checking on the interior type.
-    end] ++ iter_checks([{{:optional, meta, [key_type]}, val_type} | rest], variable, die)
+    end] ++ deep_checks([{{:optional, meta, [key_type]}, val_type} | rest], variable, die)
   end
-  def iter_checks([{{:optional, _, [key_type]}, val_type} | rest], variable, die) do
+  def deep_checks([{{:optional, _, [key_type]}, val_type} | rest], variable, die) do
     key_match = Typespec.to_guard(key_type, quote do var!(key) end)
     val_match = Typespec.to_guard(val_type, quote do var!(val) end)
     [quote do
@@ -121,8 +116,9 @@ defmodule TypedHeaders.Map do
       |> Enum.all?(fn {_, var!(val)} ->
         unquote(val_match)
       end) || unquote(die)
-    end] ++ iter_checks(rest, variable, die)
+    end] ++ deep_checks(rest, variable, die)
   end
-  def iter_checks([_ | rest], variable, die), do: iter_checks(rest, variable, die)
+  def deep_checks([_ | rest], variable, die), do: deep_checks(rest, variable, die)
+  def deep_checks(_, _, _), do: []
 
 end

@@ -124,12 +124,42 @@ defmodule TypedHeaders.Typespec do
   def to_string({typefn, _, _}), do: "#{typefn}"
 
   @type lambda :: {:fn, meta::list, block::list(Macro.t)}
+
   @spec to_lambda(Macro.t, Macro.t) :: lambda
-  def to_lambda(_typespec, _die_condition) do
+  def to_lambda(typespec, die) do
+    variable = quote do var!(result) end
+    guard = when_result(typespec, variable)
+    deep_check = to_deep_check(typespec, variable, die)
     quote do
-      fn -> nil end
+      fn
+        unquote(guard) ->
+          unquote_splicing(deep_check)
+        _ -> unquote(die)
+      end
     end
   end
+
+  def when_result(typedata, variable) do
+    {:when, [], [variable, to_guard(typedata, variable)]}
+  end
+
+  @modules [TypedHeaders.List, TypedHeaders.Module, TypedHeaders.Map]
+
+  def to_deep_check(typedata, variable, die) do
+    Enum.flat_map(@modules, fn mod ->
+      mod.deep_checks(typedata, variable, die)
+    end)
+  end
+
+  @module_types TypedHeaders.Module.types
+  def deep_checks(spec = {module_type, _, _}, variable, die)
+      when module_type in @module_types do
+    TypedHeaders.Module.deep_checks(spec, variable, die)
+  end
+  def deep_checks(spec = {:%{}, _, _}, variable, die) do
+    TypedHeaders.Map.deep_checks(spec, variable, die)
+  end
+  def deep_checks(_, _, _), do: []
 
   def typefn(type, variable), do: {@typefn[type], @full_context, [variable]}
 
