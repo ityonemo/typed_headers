@@ -7,30 +7,33 @@ defmodule TypedHeaders.Redef do
   alias TypedHeaders.List
 
   defmacro defp({@t, _, [{fn_name, meta, params}, retval_type]}, block) do
-    rebuild_code(:def, fn_name, meta, params, retval_type, block)
+    rebuild_code(:def, __CALLER__.module, fn_name, meta, params, retval_type, block)
   end
 
   defmacro defp({fn_name, meta, params}, block) do
-    rebuild_code(:def, fn_name, meta, params, nil, block)
+    rebuild_code(:def, __CALLER__.module, fn_name, meta, params, nil, block)
   end
 
   defmacro def({@t, _, [{fn_name, meta, params}, retval_type]}, block) do
-    rebuild_code(:def, fn_name, meta, params, retval_type, block)
+    rebuild_code(:def, __CALLER__.module, fn_name, meta, params, retval_type, block)
   end
 
   defmacro def({fn_name, meta, params}, block) do
-    rebuild_code(:def, fn_name, meta, params, nil, block)
+    rebuild_code(:def, __CALLER__.module, fn_name, meta, params, nil, block)
   end
 
-  @spec rebuild_code(:def | :defp, atom, list,  nil | [Macro.t], Macro.t, Macro.t) :: Macro.t
-  defp rebuild_code(macro, fn_name, meta, nil, retval_type, block) do
-    rebuild_code(macro, fn_name, meta, [], retval_type, block)
+  @spec rebuild_code(:def | :defp, module, atom, list,  nil | [Macro.t], Macro.t, Macro.t) :: Macro.t
+  defp rebuild_code(macro, module, fn_name, meta, nil, retval_type, block) do
+    rebuild_code(macro, module, fn_name, meta, [], retval_type, block)
   end
-  defp rebuild_code(macro, fn_name, meta, params, retval_type, block) do
+  defp rebuild_code(macro, module, fn_name, meta, params, retval_type, block) do
     header = {fn_name, meta, Enum.map(params, &naked_params/1)}
 
+    #defexception [:module, :function, :arity, :kind, :args, :clauses]
+    desc = %{module: module, function: fn_name, arity: length(params)}
+
     finalized_block = block
-    |> inject_param_checks(Enum.flat_map(params, &param_checks/1))
+    |> inject_param_checks(Enum.flat_map(params, &param_checks(&1, desc)))
     |> inject_retval_check(fn_name, retval_type)
 
     quote do
@@ -42,12 +45,13 @@ defmodule TypedHeaders.Redef do
   defp naked_params({@t, _, [varinfo, _typeinfo]}), do: varinfo
   defp naked_params(varinfo), do: varinfo
 
-  @full_context [context: Elixir, import: Kernel]
-
-  defp param_checks({@t, _, [_variable, {type, _, _}]}) when type in @noops, do: []
-  defp param_checks({@t, _, [variable, typespec]}) do
+  defp param_checks({@t, _, [_variable, {type, _, _}]}, _) when type in @noops, do: []
+  defp param_checks({@t, _, [variable, typespec]}, desc) do
     die = quote do
-      raise FunctionClauseError
+      raise FunctionClauseError,
+        module: unquote(desc.module),
+        function: unquote(desc.function),
+        arity: unquote(desc.arity)
     end
     lambda = Typespec.to_lambda(typespec, die)
     [quote do
@@ -55,7 +59,7 @@ defmodule TypedHeaders.Redef do
       param_check.(unquote(variable))
     end]
   end
-  defp param_checks(_), do: []
+  defp param_checks(_, _), do: []
 
   defp inject_param_checks([do: {:__block__, meta, terms}], checks) do
     [do: {:__block__, meta, checks ++ terms}]
@@ -79,15 +83,5 @@ defmodule TypedHeaders.Redef do
       retval_lambda.(var!(result))
       var!(result)
     end]
-  end
-
-  defp list_to_ands([a, b]) do
-    {:and, @full_context, [a, b]}
-  end
-  defp list_to_ands([a]), do: a
-  defp list_to_ands(lst) do
-    half_length = div(Enum.count(lst), 2)
-    {lst_1, lst_2} = Enum.split(lst, half_length)
-    {:and, @full_context, [list_to_ands(lst_1), list_to_ands(lst_2)]}
   end
 end
