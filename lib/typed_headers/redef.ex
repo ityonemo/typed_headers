@@ -75,6 +75,25 @@ defmodule TypedHeaders.Redef do
   defp param_checks({@t, meta, [variable, {:as_boolean, _, [spec]}]}, desc) do
     param_checks({@t, meta, [variable, spec]}, desc)
   end
+  defp param_checks({@t, meta, [variable, {:|, _, [spec1, spec2]}]}, desc) do
+    checks1 = param_checks({@t, meta, [variable, spec1]}, desc)
+    checks2 = param_checks({@t, meta, [variable, spec2]}, desc)
+
+    cond do
+      checks1 == [] -> []
+      checks2 == [] -> []
+      true ->
+        [check1] = checks1
+        [check2] = checks2
+        [quote do
+          try do
+            unquote(check1)
+          rescue
+            _ -> unquote(check2)
+          end
+        end]
+    end
+  end
   defp param_checks({@t, _, [variable, typespec]}, desc) do
     die = quote do
       raise FunctionClauseError,
@@ -99,6 +118,19 @@ defmodule TypedHeaders.Redef do
   defp inject_retval_check(block, fn_name, {:as_boolean, _, [spec]}) do
     inject_retval_check(block, fn_name, spec)
   end
+  defp inject_retval_check([do: inner_block], fn_name, check = {:|, _, _}) do
+    typestr = ""
+    die = quote do
+      result_text = inspect(var!(result))
+      raise RuntimeError, message: "function #{unquote(fn_name)} should return #{unquote typestr}, got: #{result_text}"
+    end
+    checks = retval_check(quote do var!(retval) end, fn_name, check, die)
+    block = quote do
+      var!(retval) = unquote(inner_block)
+      unquote(checks)
+    end
+    [do: block]
+  end
   defp inject_retval_check([do: inner_block], fn_name, typedata) do
     typestr = Typespec.to_string(typedata)
     die = quote do
@@ -107,4 +139,22 @@ defmodule TypedHeaders.Redef do
     end
     [do: Typespec.to_case(typedata, inner_block, die)]
   end
+
+  def retval_check(variable, fn_name, {:|, _, [spec1, spec2]}, die) do
+    case1 = retval_check(variable, fn_name, spec1, die)
+    case2 = retval_check(variable, fn_name, spec2, die)
+
+    quote do
+      try do
+        unquote(case1)
+      rescue
+        _ ->
+          unquote(case2)
+      end
+    end
+  end
+  def retval_check(variable, fn_name, spec, die) do
+    Typespec.to_case(spec, variable, die)
+  end
+
 end
