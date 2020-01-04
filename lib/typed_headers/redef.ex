@@ -75,34 +75,34 @@ defmodule TypedHeaders.Redef do
   defp param_checks({@t, meta, [variable, {:as_boolean, _, [spec]}]}, desc) do
     param_checks({@t, meta, [variable, spec]}, desc)
   end
-  defp param_checks({@t, meta, [variable, {:|, _, [spec1, spec2]}]}, desc) do
-    checks1 = param_checks({@t, meta, [variable, spec1]}, desc)
-    checks2 = param_checks({@t, meta, [variable, spec2]}, desc)
+  defp param_checks({@t, _, [variable, {:|, _, [spec1, spec2]}]}, desc) do
+    case1 = retval_check(variable, :boo, spec1)
+    case2 = retval_check(variable, :boo, spec2)
 
-    cond do
-      checks1 == [] -> []
-      checks2 == [] -> []
-      true ->
-        [check1] = checks1
-        [check2] = checks2
-        [quote do
-          try do
-            unquote(check1)
-          rescue
-            _ -> unquote(check2)
-          end
-        end]
-    end
-  end
-  defp param_checks({@t, _, [variable, typespec]}, desc) do
-    die = quote do
+    error = quote do
       raise FunctionClauseError,
         module: unquote(desc.module),
         function: unquote(desc.function),
         arity: unquote(desc.arity)
-      inspect var!(result) # never called, used to suppress warnings
     end
-    [Typespec.to_case(typespec, variable, die)]
+
+    [quote do
+      unquote(case1) || unquote(case2) || unquote(error)
+    end]
+  end
+  defp param_checks({@t, _, [variable, typespec]}, desc) do
+    error = quote do
+      raise FunctionClauseError,
+        module: unquote(desc.module),
+        function: unquote(desc.function),
+        arity: unquote(desc.arity)
+    end
+
+    check = retval_check(variable, :boo, typespec)
+
+    [quote do
+      unquote(check) || unquote(error)
+    end]
   end
   defp param_checks(_, _), do: []
 
@@ -120,41 +120,36 @@ defmodule TypedHeaders.Redef do
   end
   defp inject_retval_check([do: inner_block], fn_name, check = {:|, _, _}) do
     typestr = ""
-    die = quote do
-      result_text = inspect(var!(result))
-      raise RuntimeError, message: "function #{unquote(fn_name)} should return #{unquote typestr}, got: #{result_text}"
-    end
-    checks = retval_check(quote do var!(retval) end, fn_name, check, die)
+    checks = retval_check(quote do var!(retval) end, fn_name, check)
     block = quote do
       var!(retval) = unquote(inner_block)
-      unquote(checks)
+      result_text = inspect(var!(retval))
+      unquote(checks) || raise RuntimeError, message: "function #{unquote(fn_name)} should return #{unquote typestr}, got: #{result_text}"
+      var!(retval)
     end
     [do: block]
   end
   defp inject_retval_check([do: inner_block], fn_name, typedata) do
     typestr = Typespec.to_string(typedata)
-    die = quote do
-      result_text = inspect(var!(result))
-      raise RuntimeError, message: "function #{unquote(fn_name)} should return #{unquote typestr}, got: #{result_text}"
-    end
-    [do: Typespec.to_case(typedata, inner_block, die)]
+    block = Typespec.to_case(typedata, inner_block)
+    [do: quote do
+      var!(retval) = unquote(inner_block)
+      result_text = inspect(var!(retval))
+      unquote(block) || raise RuntimeError, message: "function #{unquote(fn_name)} should return #{unquote typestr}, got: #{result_text}"
+      var!(retval)
+    end]
   end
 
-  def retval_check(variable, fn_name, {:|, _, [spec1, spec2]}, die) do
-    case1 = retval_check(variable, fn_name, spec1, die)
-    case2 = retval_check(variable, fn_name, spec2, die)
+  def retval_check(variable, fn_name, {:|, _, [spec1, spec2]}) do
+    case1 = retval_check(variable, fn_name, spec1)
+    case2 = retval_check(variable, fn_name, spec2)
 
     quote do
-      try do
-        unquote(case1)
-      rescue
-        _ ->
-          unquote(case2)
-      end
+      unquote(case1) || unquote(case2)
     end
   end
-  def retval_check(variable, fn_name, spec, die) do
-    Typespec.to_case(spec, variable, die)
+  def retval_check(variable, _fn_name, spec) do
+    Typespec.to_case(spec, variable)
   end
 
 end
