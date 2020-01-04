@@ -63,33 +63,36 @@ defmodule TypedHeaders.Map do
   defguard is_literal(type) when is_atom(type) or is_integer(type) or type == []
   defguard is_empty_literal(atom) when atom in [:<<>>, :{}, :%{}]
 
-  def deep_checks({:%{}, _, list}, variable, die) do
-    deep_check(list, variable, die)
+  def deep_checks({:%{}, _, list}, variable) do
+    deep_check(list, variable)
   end
-  def deep_checks({:%, _, [module, {:%{}, _, spec}]}, variable, die) do
-    [
-      check_struct_existence(module, die),
-      check_struct_fields(module, variable, die),
-    ] ++ deep_check(spec, variable, die)
+  def deep_checks({:%, _, [module, {:%{}, _, spec}]}, variable) do
+    pt1 = check_struct_existence(module)
+    pt2 = check_struct_fields(module, variable)
+    pt3 = deep_check(spec, variable)
+    [quote do
+      unquote(pt1) && unquote(pt2) && unquote(pt3)
+    end]
   end
-  def deep_checks({:struct, _, _}, variable, die) do
-    [
-      check_struct_existence(variable, die),
-      check_struct_fields(variable, variable, die),
-    ]
+  def deep_checks({:struct, _, _}, variable) do
+    pt1 = check_struct_existence(variable)
+    pt2 = check_struct_fields(variable, variable)
+    [quote do
+      unquote(pt1) && unquote(pt2)
+    end]
   end
-  def deep_checks(_, _, _), do: []
+  def deep_checks(_, _), do: []
 
-  def deep_check([], _variable, _die), do: []
-  def deep_check([{{:required, _, [key_type]}, _val_type} | rest], variable, die) when is_literal(key_type) do
-    deep_check(rest, variable, die)
+  def deep_check([], _variable, _false), do: []
+  def deep_check([{{:required, _, [key_type]}, _val_type} | rest], variable) when is_literal(key_type) do
+    deep_check(rest, variable)
     # TODO: do deep checking when necessary
   end
-  def deep_check([{{:required, _, [{atom, _, _}]}, _val_type} | rest], variable, die) when is_empty_literal(atom) do
-    deep_check(rest, variable, die)
+  def deep_check([{{:required, _, [{atom, _, _}]}, _val_type} | rest], variable) when is_empty_literal(atom) do
+    deep_check(rest, variable)
     # TODO: do deep checking when necessary
   end
-  def deep_check([{{:required, meta, [key_type]}, val_type} | rest], variable, die) do
+  def deep_check([{{:required, meta, [key_type]}, val_type} | rest], variable) do
     key_match = Typespec.to_guard(key_type, quote do var!(key) end)
     [quote do
       # make sure that at least one key exists matching the typespec.
@@ -97,11 +100,11 @@ defmodule TypedHeaders.Map do
       |> Map.keys
       |> Enum.any?(fn var!(key) ->
         unquote(key_match)
-      end) || unquote(die)
+      end)
       # TODO: deep checking on the interior type.
-    end] ++ deep_check([{{:optional, meta, [key_type]}, val_type} | rest], variable, die)
+    end] ++ deep_check([{{:optional, meta, [key_type]}, val_type} | rest], variable)
   end
-  def deep_check([{{:optional, _, [key_type]}, val_type} | rest], variable, die) do
+  def deep_check([{{:optional, _, [key_type]}, val_type} | rest], variable) do
     key_match = Typespec.to_guard(key_type, quote do var!(key) end)
     val_match = Typespec.to_guard(val_type, quote do var!(val) end)
     [quote do
@@ -112,25 +115,25 @@ defmodule TypedHeaders.Map do
       end)
       |> Enum.all?(fn {_, var!(val)} ->
         unquote(val_match)
-      end) || unquote(die)
-    end] ++ deep_check(rest, variable, die)
+      end)
+    end] ++ deep_check(rest, variable)
   end
-  def deep_check([_ | rest], variable, die), do: deep_check(rest, variable, die)
-  def deep_check(_, _, _), do: []
+  def deep_check([_ | rest], variable), do: deep_check(rest, variable)
+  def deep_check(_, _), do: []
 
   # struct helpers
 
-  defp check_struct_existence(variable_or_module, die) do
+  defp check_struct_existence(variable_or_module) do
     module = normalize(variable_or_module)
     quote do
-      unless function_exported?(unquote(module), :__struct__, 0), do: unquote(die)
+      function_exported?(unquote(module), :__struct__, 0)
     end
   end
 
-  defp check_struct_fields(variable_or_module, variable, die) do
+  defp check_struct_fields(variable_or_module, variable) do
     module = normalize(variable_or_module)
     quote do
-      unless Map.keys(unquote(module).__struct__) == Map.keys(unquote(variable)), do: unquote(die)
+      Map.keys(unquote(module).__struct__) == Map.keys(unquote(variable))
     end
   end
 

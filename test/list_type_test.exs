@@ -2,44 +2,48 @@ defmodule TypedHeadersTest.ListTypeTest do
   use ExUnit.Case, async: true
   use TypedHeaders
 
-  def list_header(value :: [integer]) do
+  def typed_list_header(value :: [integer]) do
     value
   end
 
-  def list_retval(value) :: [integer] do
+  def typed_list_retval(value) :: [integer] do
     value
   end
 
   describe "list typechecking works" do
     test "in the header" do
-      assert [] == list_header([])
-      assert [47] == list_header([47])
-      assert [47, 42] == list_header([47, 42])
+      assert [] == typed_list_header([])
+      assert [47] == typed_list_header([47])
+      assert [47, 42] == typed_list_header([47, 42])
       assert_raise FunctionClauseError, fn ->
-        list_header(:foo)
+        typed_list_header(:foo)
       end
       assert_raise FunctionClauseError, fn ->
-        list_header([:foo])
+        typed_list_header([:foo])
       end
       assert_raise FunctionClauseError, fn ->
-        list_header([47, :foo])
+        typed_list_header([47, :foo])
       end
-      # TODO: raise on improper list.
+      assert_raise FunctionClauseError, fn ->
+        typed_list_header([47 | 42])
+      end
     end
     test "in the retval" do
-      assert [] == list_retval([])
-      assert [47] == list_retval([47])
-      assert [47, 42] == list_retval([47, 42])
+      assert [] == typed_list_retval([])
+      assert [47] == typed_list_retval([47])
+      assert [47, 42] == typed_list_retval([47, 42])
       assert_raise RuntimeError, fn ->
-        list_retval(:foo)
+        typed_list_retval(:foo)
       end
       assert_raise RuntimeError, fn ->
-        list_retval([:foo])
+        typed_list_retval([:foo])
       end
       assert_raise RuntimeError, fn ->
-        list_retval([47, :foo])
+        typed_list_retval([47, :foo])
       end
-      # TODO: raise on improper list.
+      assert_raise RuntimeError, fn ->
+        typed_list_retval([47 | 42])
+      end
     end
   end
 
@@ -93,6 +97,7 @@ defmodule TypedHeadersTest.ListTypeTest do
   end
 
   describe "nonempty list typechecking works" do
+    @tag :one
     test "in the header" do
       assert [47] == nonempty_list_header([47])
       assert [47, 42] == nonempty_list_header([47, 42])

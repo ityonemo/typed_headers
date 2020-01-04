@@ -151,19 +151,18 @@ defmodule TypedHeaders.Typespec do
   def to_string(int) when is_integer(int), do: "#{int}"
   def to_string({typefn, _, _}), do: "#{typefn}"
 
-  #@type lambda :: {:fn, meta::list, block::list(Macro.t)}
+  @type case_ast :: [{:case, list, [Macro.t]}] | []
 
-  @spec to_case(Macro.t, Macro.t, Macro.t) :: Macro.t
-  def to_case(typespec, input, die) do
+  @spec to_case(Macro.t, Macro.t) :: case_ast
+  def to_case(typespec, input) do
     variable = quote do var!(result) end
     guard = when_result(typespec, variable)
-    deep_check = to_deep_check(typespec, variable, die)
+    deep_check = to_deep_check(typespec, variable)
     quote do
       case unquote(input) do
         unquote(guard) ->
           unquote_splicing(deep_check)
-          unquote(variable)
-        var!(result) -> unquote(die)
+        _ -> false
       end
     end
   end
@@ -174,19 +173,24 @@ defmodule TypedHeaders.Typespec do
 
   @modules [TypedHeaders.List, TypedHeaders.Module, TypedHeaders.Map]
 
-  def to_deep_check(typedata, variable, die) do
-    Enum.flat_map(@modules, fn mod ->
-      mod.deep_checks(typedata, variable, die)
+  def to_deep_check(typedata, variable) do
+    @modules
+    |> Enum.flat_map(fn mod ->
+      mod.deep_checks(typedata, variable)
     end)
+    |> case do
+      [] -> [true]
+      list -> list
+    end
   end
 
   @module_types TypedHeaders.Module.types
-  def deep_checks(spec = {module_type, _, _}, variable, die)
+  def deep_checks(spec = {module_type, _, _}, variable)
       when module_type in @module_types do
-    TypedHeaders.Module.deep_checks(spec, variable, die)
+    TypedHeaders.Module.deep_checks(spec, variable)
   end
-  def deep_checks(spec = {:%{}, _, _}, variable, die) do
-    TypedHeaders.Map.deep_checks(spec, variable, die)
+  def deep_checks(spec = {:%{}, _, _}, variable) do
+    TypedHeaders.Map.deep_checks(spec, variable)
   end
   def deep_checks(_, _, _), do: []
 
