@@ -138,6 +138,7 @@ defmodule TypedHeaders.Typespec do
         typefn(:port, variable)),
       typefn(:reference, variable))
   end
+  def to_guard(_, _), do: nil
 
   def to_string([]), do: "[]"
   def to_string([{:..., _, _}]), do: "[...]"
@@ -157,18 +158,27 @@ defmodule TypedHeaders.Typespec do
   def to_case(typespec, input) do
     variable = quote do var!(result) end
     guard = when_result(typespec, variable)
-    deep_check = to_deep_check(typespec, variable)
-    quote do
-      case unquote(input) do
-        unquote(guard) ->
-          unquote_splicing(deep_check)
-        _ -> false
+    if guard do
+      deep_check = to_deep_check(typespec, variable)
+      quote do
+        case unquote(input) do
+          unquote(guard) ->
+            unquote_splicing(deep_check)
+          _ -> false
+        end
+      end
+    else
+      {spec, _, params} = typespec
+      params = params || []
+      quote do
+        __type_check__(unquote(spec), unquote(params), unquote(input))
       end
     end
   end
 
   def when_result(typedata, variable) do
-    {:when, [], [variable, to_guard(typedata, variable)]}
+    guard = to_guard(typedata, variable)
+    if guard, do: {:when, [], [variable, guard]}
   end
 
   @modules [TypedHeaders.List, TypedHeaders.Module, TypedHeaders.Map]
