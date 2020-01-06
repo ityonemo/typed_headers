@@ -97,7 +97,6 @@ defmodule TypedHeadersTest.ListTypeTest do
   end
 
   describe "nonempty list typechecking works" do
-    @tag :one
     test "in the header" do
       assert [47] == nonempty_list_header([47])
       assert [47, 42] == nonempty_list_header([47, 42])

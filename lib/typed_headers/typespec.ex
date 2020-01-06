@@ -150,7 +150,8 @@ defmodule TypedHeaders.Typespec do
   def to_string({:.., _, [a, b]}), do: "#{a}..#{b}"
   def to_string(atom) when is_atom(atom), do: ":#{atom}"
   def to_string(int) when is_integer(int), do: "#{int}"
-  def to_string({typefn, _, _}), do: "#{typefn}"
+  def to_string({:., _, [{:__aliases__, _, [mod]}, type]}), do: "#{mod}.#{type}"
+  def to_string({typefn, _, _}), do: "#{inspect typefn}"
 
   @type case_ast :: [{:case, list, [Macro.t]}] | []
 
@@ -158,21 +159,23 @@ defmodule TypedHeaders.Typespec do
   def to_case(typespec, input) do
     variable = quote do var!(result) end
     guard = when_result(typespec, variable)
-    if guard do
-      deep_check = to_deep_check(typespec, variable)
-      quote do
-        case unquote(input) do
-          unquote(guard) ->
-            unquote_splicing(deep_check)
-          _ -> false
+    cond do
+      guard ->
+        deep_check = to_deep_check(typespec, variable)
+        quote do
+          case unquote(input) do
+            unquote(guard) ->
+              unquote_splicing(deep_check)
+            _ -> false
+          end
         end
-      end
-    else
-      {spec, _, params} = typespec
-      params = params || []
-      quote do
-        __type_check__(unquote(spec), unquote(params), unquote(input))
-      end
+      match?({_, _, _}, typespec) ->
+        {spec, _, params} = typespec
+        params = params || []
+        quote do
+          __type_check__(unquote(spec), unquote(params), unquote(input))
+        end
+      true -> quote do end
     end
   end
 
@@ -218,5 +221,66 @@ defmodule TypedHeaders.Typespec do
 
   def function([args, _ret], variable) do
     {:is_function, @full_context, [variable, length(args)]}
+  end
+
+  def from_module_type(t = {module, _, _}) do
+    module
+    |> Code.Typespec.fetch_types
+    |> fetch_from_list(t)
+  end
+
+  defp fetch_from_list({:ok, typelist}, {module, typename, args}) do
+    typelist
+    |> Enum.find(&match?({:type, {^typename, _, _}}, &1))
+    |> case do
+      {:type, {^typename, mod_spec, a}} when length(a) == length(args) ->
+        from_module_type(mod_spec, module)
+      _ ->
+        raise "unidentified module type structure found"
+    end
+  end
+  defp fetch_from_list(_, {module, typename, args}) do
+    raise "t:#{module}.#{typename}/#{length args} not found"
+  end
+
+  defp from_module_type({:type, _, :tuple, lst}, module) do
+    {:{}, [], Enum.map(lst, &from_module_type(&1, module))}
+  end
+  defp from_module_type({:type, _, :range, [{:integer, _, a}, {:integer, _, b}]}, _module) do
+    {:.., [], [a, b]}
+  end
+  defp from_module_type({:type, _, :map, fields}, module) do
+    {:%{}, [], Enum.map(fields, &translate_map_types(&1, module))}
+  end
+  defp from_module_type({:type, meta, :union, lst}, module) do
+    [lst_front, lst_back] = Enum.chunk_every(lst, div(length(lst), 2))
+    typ1 = case lst_front do
+      [one_type] -> from_module_type(one_type, module)
+      many_types -> from_module_type({:type, meta, :union, many_types}, module)
+    end
+    typ2 = case lst_back do
+      [one_type] -> from_module_type(one_type, module)
+      many_types -> from_module_type({:type, meta, :union, many_types}, module)
+    end
+    {:|, [], [typ1, typ2]}
+  end
+  defp from_module_type({:type, _, type, args}, module) do
+    {type, [], Enum.map(args, &from_module_type(&1, module))}
+  end
+  defp from_module_type({:user_type, _, type, args}, module) do
+    from_module_type({module, type, args})
+  end
+  defp from_module_type({:remote_type, _, [{:atom, _, module}, {:atom, _, type}, args]}, _module) do
+    from_module_type({module, type, args})
+  end
+  defp from_module_type({:integer, _, value}, _module), do: value
+  defp from_module_type({:atom, _, value}, _module), do: value
+  defp from_module_type(_, _), do: nil
+
+  defp translate_map_types({:type, _, :map_field_exact, [key, value]}, module) do
+    {{:required, [], [from_module_type(key, module)]}, from_module_type(value, module)}
+  end
+  defp translate_map_types({:type, _, :map_field_assoc, [key, value]}, module) do
+    {{:optional, [], [from_module_type(key, module)]}, from_module_type(value, module)}
   end
 end

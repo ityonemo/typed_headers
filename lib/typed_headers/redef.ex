@@ -32,9 +32,12 @@ defmodule TypedHeaders.Redef do
 
     parameter_checks = params
     |> Enum.map(&resolve_structs(&1, caller.aliases))
+    |> Enum.map(&resolve_types(&1, caller.aliases))
     |> Enum.flat_map(&param_checks(&1, desc))
 
-    resolved_retval_type = resolve_structs(retval_type, caller.aliases)
+    resolved_retval_type = retval_type
+    |> resolve_structs(caller.aliases)
+    |> resolve_types(caller.aliases)
 
     finalized_block = block
     |> inject_param_checks(parameter_checks)
@@ -50,22 +53,20 @@ defmodule TypedHeaders.Redef do
     {@t, meta, [variable, resolved_struct_ast]}
   end
   defp resolve_structs({:%, meta, [{:__aliases__, _, [struct_alias]}, struct_content]}, aliases) do
-    module = aliases
-    |> Enum.flat_map(fn
-      {context_alias, context_module} ->
-        if (context_alias |> Module.split |> List.last) == Atom.to_string(struct_alias) do
-          [context_module]
-        else
-          []
-        end
-    end)
-    |> case do
-      [] -> Module.concat(:Elixir, struct_alias)
-      [module] -> module
-    end
+    module = resolve_aliases(struct_alias, aliases)
     {:%, meta, [module, struct_content]}
   end
   defp resolve_structs(other, _), do: other
+
+  defp resolve_types({@t, meta, [variable, struct_ast]}, aliases) do
+    resolved_type_ast = resolve_types(struct_ast, aliases)
+    {@t, meta, [variable, resolved_type_ast]}
+  end
+  defp resolve_types({{:., _, [{:__aliases__, _, [mod_alias]}, type]}, _, args}, aliases) do
+    module = resolve_aliases(mod_alias, aliases)
+    Typespec.from_module_type({module, type, args})
+  end
+  defp resolve_types(other, _), do: other
 
   @spec naked_params(Macro.t) :: Macro.t
   defp naked_params({@t, _, [varinfo, _typeinfo]}), do: varinfo
@@ -76,8 +77,8 @@ defmodule TypedHeaders.Redef do
     param_checks({@t, meta, [variable, spec]}, desc)
   end
   defp param_checks({@t, _, [variable, {:|, _, [spec1, spec2]}]}, desc) do
-    case1 = retval_check(variable, :boo, spec1)
-    case2 = retval_check(variable, :boo, spec2)
+    case1 = retval_check(variable, spec1)
+    case2 = retval_check(variable, spec2)
 
     error = quote do
       raise FunctionClauseError,
@@ -98,7 +99,7 @@ defmodule TypedHeaders.Redef do
         arity: unquote(desc.arity)
     end
 
-    check = retval_check(variable, :boo, typespec)
+    check = retval_check(variable, typespec)
 
     [quote do
       unquote(check) || unquote(error)
@@ -120,7 +121,7 @@ defmodule TypedHeaders.Redef do
   end
   defp inject_retval_check([do: inner_block], fn_name, check = {:|, _, _}) do
     typestr = ""
-    checks = retval_check(quote do var!(retval) end, fn_name, check)
+    checks = retval_check(quote do var!(retval) end, check)
     block = quote do
       var!(retval) = unquote(inner_block)
       result_text = inspect(var!(retval))
@@ -140,16 +141,32 @@ defmodule TypedHeaders.Redef do
     end]
   end
 
-  def retval_check(variable, fn_name, {:|, _, [spec1, spec2]}) do
-    case1 = retval_check(variable, fn_name, spec1)
-    case2 = retval_check(variable, fn_name, spec2)
+  def retval_check(variable, {:|, _, [spec1, spec2]}) do
+    case1 = retval_check(variable, spec1)
+    case2 = retval_check(variable, spec2)
 
     quote do
       unquote(case1) || unquote(case2)
     end
   end
-  def retval_check(variable, _fn_name, spec) do
+  def retval_check(variable, spec) do
     Typespec.to_case(spec, variable)
+  end
+
+  def resolve_aliases(module_alias, aliases) do
+    aliases
+    |> Enum.flat_map(fn
+      {context_alias, context_module} ->
+        if (context_alias |> Module.split |> List.last) == Atom.to_string(module_alias) do
+          [context_module]
+        else
+          []
+        end
+    end)
+    |> case do
+      [] -> Module.concat(:Elixir, module_alias)
+      [module] -> module
+    end
   end
 
 end
