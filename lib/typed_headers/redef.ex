@@ -40,9 +40,13 @@ defmodule TypedHeaders.Redef do
     |> inject_param_checks(parameter_checks)
     |> inject_retval_check(fn_name, resolved_retval_type)
 
-    quote do
+    q = quote do
       Kernel.unquote(macro)(unquote(header), unquote(finalized_block))
     end
+    if fn_name == :custom_header do
+      q |> Macro.to_string |> IO.puts
+    end
+    q
   end
 
   defp resolve_structs({@t, meta, [variable, struct_ast]}, aliases) do
