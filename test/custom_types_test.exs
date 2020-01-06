@@ -18,6 +18,12 @@ defmodule TypedHeadersTest.CustomTypesTest do
         custom_header(:foo)
       end
     end
+    test "in the footer" do
+      assert 47 == custom_footer(47)
+      assert_raise RuntimeError, fn ->
+        custom_footer(:foo)
+      end
+    end
   end
 
 end
